@@ -17,6 +17,9 @@ import * as jenkinsResources from "../resource/devops/jenkins"
 import * as k8sResources from "../resource/devops/kubernetes"
 import * as cloudResources from "../resource/devops/cloud"
 
+// Import DevOps prompts
+import * as devopsPrompts from "../prompt/devops"
+
 export class ClpMcp {
   readonly name: string = "clp-mcp"
   readonly version: string = "0.0.1"
@@ -111,30 +114,75 @@ export default function serve({ config, }: { config: z.infer<typeof configSchema
     }),
   );
 
-  // Add a prompt
+  // Register DevOps prompts
   mcp.registerPrompt(
-    "find",
+    devopsPrompts.infrastructureProvisioningPrompt.name,
     {
-      title: "find",
-      description: "Find a file or repository",
-      argsSchema: {
-        dir: z.string().describe("Dir"),
-        name: z.string().describe("Name of the person to greet"),
-      },
+      title: "Infrastructure Provisioning",
+      description: devopsPrompts.infrastructureProvisioningPrompt.description,
+      argsSchema: devopsPrompts.infrastructureProvisioningPrompt.argsSchema,
     },
-    ({ name }) => {
-      return {
-        messages: [
-          {
-            role: "user",
-            content: {
-              type: "text",
-              text: `Say hello to ${name}`,
-            },
-          },
-        ],
-      };
+    devopsPrompts.handleInfrastructureProvisioning
+  );
+
+  mcp.registerPrompt(
+    devopsPrompts.cicdPipelinePrompt.name,
+    {
+      title: "CI/CD Pipeline",
+      description: devopsPrompts.cicdPipelinePrompt.description,
+      argsSchema: devopsPrompts.cicdPipelinePrompt.argsSchema,
     },
+    devopsPrompts.handleCICDPipeline
+  );
+
+  mcp.registerPrompt(
+    devopsPrompts.kubernetesDeploymentPrompt.name,
+    {
+      title: "Kubernetes Deployment",
+      description: devopsPrompts.kubernetesDeploymentPrompt.description,
+      argsSchema: devopsPrompts.kubernetesDeploymentPrompt.argsSchema,
+    },
+    devopsPrompts.handleKubernetesDeployment
+  );
+
+  mcp.registerPrompt(
+    devopsPrompts.ansiblePlaybookPrompt.name,
+    {
+      title: "Ansible Playbook",
+      description: devopsPrompts.ansiblePlaybookPrompt.description,
+      argsSchema: devopsPrompts.ansiblePlaybookPrompt.argsSchema,
+    },
+    devopsPrompts.handleAnsiblePlaybook
+  );
+
+  mcp.registerPrompt(
+    devopsPrompts.cloudMigrationPrompt.name,
+    {
+      title: "Cloud Migration",
+      description: devopsPrompts.cloudMigrationPrompt.description,
+      argsSchema: devopsPrompts.cloudMigrationPrompt.argsSchema,
+    },
+    devopsPrompts.handleCloudMigration
+  );
+
+  mcp.registerPrompt(
+    devopsPrompts.disasterRecoveryPrompt.name,
+    {
+      title: "Disaster Recovery",
+      description: devopsPrompts.disasterRecoveryPrompt.description,
+      argsSchema: devopsPrompts.disasterRecoveryPrompt.argsSchema,
+    },
+    devopsPrompts.handleDisasterRecovery
+  );
+
+  mcp.registerPrompt(
+    devopsPrompts.securityAuditPrompt.name,
+    {
+      title: "Security Audit",
+      description: devopsPrompts.securityAuditPrompt.description,
+      argsSchema: devopsPrompts.securityAuditPrompt.argsSchema,
+    },
+    devopsPrompts.handleSecurityAudit
   );
 
   // Register Ansible tools
