@@ -1,23 +1,39 @@
 {
-	"name": "smithery-scaffold",
-	"version": "1.0.0",
-	"description": "",
-	"main": "index.js",
-	"module": "./src/index.ts",
-	"type": "module",
-	"scripts": {
-		"dev": "smithery dev",
-		"build": "smithery build"
-	},
-	"keywords": [],
-	"author": "",
-	"license": "ISC",
-	"dependencies": {
-		"@modelcontextprotocol/sdk": "^1.19.1",
-		"@smithery/sdk": "^1.6.8",
-		"zod": "^3.25.46"
-	},
-	"devDependencies": {
-		"@smithery/cli": "^1.4.6"
-	}
+  "name": "smithery-scaffold",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "module": "./src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "smithery dev",
+    "build": "smithery build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.19.1",
+    "@smithery/sdk": "^1.6.8",
+    "cloudflare": "^5.2.0",
+    "commander": "^14.0.1",
+    "dotenv": "^17.2.3",
+    "openai": "^6.2.0",
+    "uuid": "^13.0.0",
+    "ws": "^8.18.3",
+    "zod": "^3.25.46",
+    "zod-to-json-schema": "^3.24.6"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.65.0",
+    "@cloudflare/workers-types": "^4.20251008.0",
+    "@google/genai": "^1.22.0",
+    "@smithery/cli": "^1.4.6",
+    "@types/bun": "latest",
+    "ollama": "^0.6.0"
+  },
+  "private": true,
+  "peerDependencies": {
+    "typescript": "^5"
+  }
 }
