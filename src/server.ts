@@ -6,6 +6,7 @@ import clpMcpConfig from "./config"
 import console from "node:console"
 import { z } from "zod"
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+import { KnowledgeGraph, Entity, Relationship } from "./knowledge-graph.js"
 
 export interface MemoryEntry {
   key: string;
@@ -15,6 +16,7 @@ export interface MemoryEntry {
     updated: Date;
     tags?: string[];
     category?: string;
+    entityId?: string; // Link to knowledge graph entity
   };
 }
 
@@ -22,6 +24,7 @@ export class ClpMcpServer {
   private _memory: Map<string, MemoryEntry> = new Map();
   private _contexts: Map<string, any> = new Map();
   private _reasoning: Array<{ timestamp: Date; context: string; decision: string }> = [];
+  private _knowledgeGraph: KnowledgeGraph = new KnowledgeGraph();
 
   public store(key: string, value: any, tags?: string[], category?: string): {
     content: Array<{ type: string; text: string }>;
@@ -166,6 +169,324 @@ export class ClpMcpServer {
 
   public getContext(contextId: string): any {
     return this._contexts.get(contextId);
+  }
+
+  // Knowledge Graph Methods
+
+  public addEntity(
+    type: string,
+    properties: Record<string, any>,
+    tags?: string[]
+  ): {
+    content: Array<{ type: string; text: string }>;
+    isError?: boolean;
+  } {
+    const entity = this._knowledgeGraph.addEntity(type, properties, undefined, tags);
+    
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Entity created: ${entity.id}\nType: ${entity.type}\nProperties: ${JSON.stringify(entity.properties, null, 2)}`,
+        }
+      ]
+    };
+  }
+
+  public getEntity(entityId: string): {
+    content: Array<{ type: string; text: string }>;
+    isError?: boolean;
+  } {
+    const entity = this._knowledgeGraph.getEntity(entityId);
+    
+    if (!entity) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Entity not found: ${entityId}`,
+          }
+        ],
+        isError: true,
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify(entity, null, 2),
+        }
+      ]
+    };
+  }
+
+  public addRelationship(
+    sourceId: string,
+    targetId: string,
+    relationshipType: string,
+    properties?: Record<string, any>,
+    weight?: number
+  ): {
+    content: Array<{ type: string; text: string }>;
+    isError?: boolean;
+  } {
+    const relationship = this._knowledgeGraph.addRelationship(
+      sourceId,
+      targetId,
+      relationshipType,
+      properties,
+      weight
+    );
+
+    if (!relationship) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Failed to create relationship: source or target entity not found`,
+          }
+        ],
+        isError: true,
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Relationship created: ${relationship.id}\nType: ${relationship.type}\nFrom: ${relationship.sourceId}\nTo: ${relationship.targetId}`,
+        }
+      ]
+    };
+  }
+
+  public queryEntities(
+    query?: string,
+    type?: string,
+    tags?: string[]
+  ): {
+    content: Array<{ type: string; text: string }>;
+  } {
+    let entities: Entity[];
+
+    if (query) {
+      entities = this._knowledgeGraph.searchEntities(query, type, tags);
+    } else if (type) {
+      entities = this._knowledgeGraph.getEntitiesByType(type);
+    } else {
+      // Return all entities (limited for performance)
+      const stats = this._knowledgeGraph.getStats();
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Total entities: ${stats.entityCount}\nType distribution: ${JSON.stringify(stats.typeDistribution, null, 2)}\n\nProvide a query or type to search for specific entities.`,
+          }
+        ]
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Found ${entities.length} entities:\n\n${JSON.stringify(entities, null, 2)}`,
+        }
+      ]
+    };
+  }
+
+  public queryRelationships(entityId: string, relationshipType?: string): {
+    content: Array<{ type: string; text: string }>;
+    isError?: boolean;
+  } {
+    const entity = this._knowledgeGraph.getEntity(entityId);
+    
+    if (!entity) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Entity not found: ${entityId}`,
+          }
+        ],
+        isError: true,
+      };
+    }
+
+    const related = this._knowledgeGraph.getRelatedEntities(entityId, relationshipType);
+    const relationships = this._knowledgeGraph.getEntityRelationships(entityId);
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Entity: ${entity.type} (${entity.id})\n\nRelationships: ${relationships.length}\n\nRelated Entities:\n${JSON.stringify(related.map(r => ({
+            entity: {
+              id: r.entity.id,
+              type: r.entity.type,
+              properties: r.entity.properties
+            },
+            relationship: {
+              type: r.relationship.type,
+              properties: r.relationship.properties
+            }
+          })), null, 2)}`,
+        }
+      ]
+    };
+  }
+
+  public traverseGraph(
+    sourceId: string,
+    targetId: string,
+    maxDepth?: number
+  ): {
+    content: Array<{ type: string; text: string }>;
+    isError?: boolean;
+  } {
+    const result = this._knowledgeGraph.findPaths(sourceId, targetId, maxDepth || 5);
+
+    if (result.entities.length === 0) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `No path found between ${sourceId} and ${targetId}`,
+          }
+        ],
+        isError: false,
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Found ${result.paths?.length || 0} paths between entities:\n\nEntities involved: ${result.entities.length}\nRelationships: ${result.relationships.length}\n\nPaths:\n${JSON.stringify(result.paths?.map((path, i) => ({
+            path: i + 1,
+            length: path.entities.length,
+            entities: path.entities.map(e => `${e.type}:${e.id}`),
+            relationships: path.relationships.map(r => r.type)
+          })), null, 2)}`,
+        }
+      ]
+    };
+  }
+
+  public getGraphStats(): {
+    content: Array<{ type: string; text: string }>;
+  } {
+    const stats = this._knowledgeGraph.getStats();
+    
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Knowledge Graph Statistics:\n\nTotal Entities: ${stats.entityCount}\nTotal Relationships: ${stats.relationshipCount}\n\nEntity Types:\n${JSON.stringify(stats.typeDistribution, null, 2)}`,
+        }
+      ]
+    };
+  }
+
+  public exportGraph(): {
+    content: Array<{ type: string; text: string }>;
+  } {
+    const graph = this._knowledgeGraph.exportGraph();
+    
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: JSON.stringify(graph, null, 2),
+        }
+      ]
+    };
+  }
+
+  public linkMemoryToEntity(key: string, entityId: string): {
+    content: Array<{ type: string; text: string }>;
+    isError?: boolean;
+  } {
+    const memoryEntry = this._memory.get(key);
+    const entity = this._knowledgeGraph.getEntity(entityId);
+
+    if (!memoryEntry) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Memory key not found: ${key}`,
+          }
+        ],
+        isError: true,
+      };
+    }
+
+    if (!entity) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Entity not found: ${entityId}`,
+          }
+        ],
+        isError: true,
+      };
+    }
+
+    // Update memory entry to link to entity
+    if (memoryEntry.metadata) {
+      memoryEntry.metadata.entityId = entityId;
+    } else {
+      memoryEntry.metadata = {
+        created: new Date(),
+        updated: new Date(),
+        entityId,
+      };
+    }
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Linked memory key "${key}" to entity ${entityId} (${entity.type})`,
+        }
+      ]
+    };
+  }
+
+  public getMemoryByEntity(entityId: string): {
+    content: Array<{ type: string; text: string }>;
+    isError?: boolean;
+  } {
+    const entity = this._knowledgeGraph.getEntity(entityId);
+    
+    if (!entity) {
+      return {
+        content: [
+          {
+            type: "text" as const,
+            text: `Entity not found: ${entityId}`,
+          }
+        ],
+        isError: true,
+      };
+    }
+
+    const linkedMemory = Array.from(this._memory.entries())
+      .filter(([_, entry]) => entry.metadata?.entityId === entityId)
+      .map(([key, entry]) => ({ key, value: entry.value, metadata: entry.metadata }));
+
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Memory entries linked to entity ${entityId} (${entity.type}):\n\n${JSON.stringify(linkedMemory, null, 2)}`,
+        }
+      ]
+    };
   }
 }
 export default function createStatelessServer({
