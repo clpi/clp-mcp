@@ -1,0 +1,162 @@
+name: Release All Platforms
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  trigger-all-releases:
+    name: Trigger All Package Releases
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          else
+            VERSION="${GITHUB_REF##refs/*/}"
+            VERSION="${VERSION#v}"
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
+          fi
+
+      - name: Trigger Debian Package Build
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'debian-package.yml',
+              ref: 'main',
+              inputs: {
+                version: '${{ env.VERSION }}'
+              }
+            });
+
+      - name: Trigger RPM Package Build
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'rpm-package.yml',
+              ref: 'main',
+              inputs: {
+                version: '${{ env.VERSION }}'
+              }
+            });
+
+      - name: Trigger AUR Package Update
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'aur-package.yml',
+              ref: 'main',
+              inputs: {
+                version: '${{ env.VERSION }}'
+              }
+            });
+
+      - name: Trigger Nix Package Update
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'nix-package.yml',
+              ref: 'main',
+              inputs: {
+                version: '${{ env.VERSION }}'
+              }
+            });
+
+      - name: Trigger Guix Package Update
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'guix-package.yml',
+              ref: 'main',
+              inputs: {
+                version: '${{ env.VERSION }}'
+              }
+            });
+
+      - name: Trigger Homebrew Formula Update
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'homebrew.yml',
+              ref: 'main',
+              inputs: {
+                version: '${{ env.VERSION }}'
+              }
+            });
+
+      - name: Trigger Snap Package Build
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'snap-package.yml',
+              ref: 'main',
+              inputs: {
+                version: '${{ env.VERSION }}'
+              }
+            });
+
+      - name: Trigger Flatpak Package Build
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'flatpak-package.yml',
+              ref: 'main',
+              inputs: {
+                version: '${{ env.VERSION }}'
+              }
+            });
+
+      - name: Summary
+        run: |
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Triggered package builds for version **${{ env.VERSION }}**:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Debian/Ubuntu (APT/DEB)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Fedora/RHEL (DNF/RPM)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Arch Linux (AUR)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ NixOS (Nix)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ GNU Guix" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ macOS (Homebrew)" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Snap" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Flatpak" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check the [Actions tab](https://github.com/${{ github.repository }}/actions) for build status." >> $GITHUB_STEP_SUMMARY

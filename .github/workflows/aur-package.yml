@@ -1,0 +1,156 @@
+name: Update AUR Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  update-aur:
+    name: Update AUR PKGBUILD
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          else
+            VERSION="${GITHUB_REF##refs/*/}"
+            VERSION="${VERSION#v}"
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
+          fi
+
+      - name: Download release asset
+        run: |
+          mkdir -p downloads
+          curl -L -o downloads/clp-mcp-linux-x64.tar.gz \
+            https://github.com/${{ github.repository }}/releases/download/v${{ env.VERSION }}/clp-mcp-${{ env.VERSION }}-linux-x64.tar.gz
+
+      - name: Calculate checksum
+        id: checksum
+        run: |
+          cd downloads
+          SHA256=$(sha256sum clp-mcp-linux-x64.tar.gz | awk '{print $1}')
+          echo "SHA256=$SHA256" >> $GITHUB_ENV
+
+      - name: Create PKGBUILD
+        run: |
+          mkdir -p aur
+          cat > aur/PKGBUILD << 'EOF'
+          # Maintainer: ${{ github.repository_owner }} <noreply@github.com>
+          pkgname=clp-mcp
+          pkgver=${{ env.VERSION }}
+          pkgrel=1
+          pkgdesc="DevOps-focused MCP server with memory and comprehensive infrastructure tooling"
+          arch=('x86_64')
+          url="https://github.com/${{ github.repository }}"
+          license=('ISC')
+          depends=()
+          provides=('clp-mcp')
+          conflicts=('clp-mcp-git')
+          source=("${pkgname}-${pkgver}.tar.gz::https://github.com/${{ github.repository }}/releases/download/v${pkgver}/clp-mcp-${pkgver}-linux-x64.tar.gz")
+          sha256sums=('${{ env.SHA256 }}')
+
+          package() {
+              install -Dm755 "${srcdir}/clp-mcp-linux-x64" "${pkgdir}/usr/bin/clp-mcp"
+          }
+          EOF
+
+      - name: Create .SRCINFO
+        run: |
+          cd aur
+          cat > .SRCINFO << 'EOF'
+          pkgbase = clp-mcp
+          	pkgdesc = DevOps-focused MCP server with memory and comprehensive infrastructure tooling
+          	pkgver = ${{ env.VERSION }}
+          	pkgrel = 1
+          	url = https://github.com/${{ github.repository }}
+          	arch = x86_64
+          	license = ISC
+          	provides = clp-mcp
+          	conflicts = clp-mcp-git
+          	source = clp-mcp-${{ env.VERSION }}.tar.gz::https://github.com/${{ github.repository }}/releases/download/v${{ env.VERSION }}/clp-mcp-${{ env.VERSION }}-linux-x64.tar.gz
+          	sha256sums = ${{ env.SHA256 }}
+
+          pkgname = clp-mcp
+          EOF
+
+      - name: Create AUR package info
+        run: |
+          cd aur
+          cat > README.md << 'EOF'
+          # clp-mcp AUR Package
+
+          To install from AUR:
+
+          ```bash
+          # Using yay
+          yay -S clp-mcp
+
+          # Using paru
+          paru -S clp-mcp
+
+          # Manual installation
+          git clone https://aur.archlinux.org/clp-mcp.git
+          cd clp-mcp
+          makepkg -si
+          ```
+
+          ## Submitting to AUR
+
+          To submit this package to AUR:
+
+          1. Create an AUR account at https://aur.archlinux.org
+          2. Add your SSH key to your AUR account
+          3. Clone the AUR repository:
+             ```bash
+             git clone ssh://aur@aur.archlinux.org/clp-mcp.git aur-clp-mcp
+             ```
+          4. Copy PKGBUILD and .SRCINFO to the repository
+          5. Commit and push:
+             ```bash
+             cd aur-clp-mcp
+             cp ../PKGBUILD ../.SRCINFO .
+             git add PKGBUILD .SRCINFO
+             git commit -m "Update to v${{ env.VERSION }}"
+             git push
+             ```
+          EOF
+
+      - name: Commit AUR files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add aur/
+          git commit -m "Update AUR package to v${{ env.VERSION }}" || echo "No changes to commit"
+          git push || echo "Nothing to push"
+
+      - name: Create artifact
+        run: |
+          cd aur
+          tar -czf ../clp-mcp-aur-${{ env.VERSION }}.tar.gz PKGBUILD .SRCINFO README.md
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: clp-mcp-aur-${{ env.VERSION }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aur-package
+          path: aur/

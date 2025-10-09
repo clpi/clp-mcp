@@ -36,6 +36,10 @@ See [MEMORY_SYSTEM.md](./MEMORY_SYSTEM.md) for detailed documentation.
 
 ## Installation
 
+[![Build Check](https://github.com/clpi/clp-mcp/actions/workflows/check.yml/badge.svg)](https://github.com/clpi/clp-mcp/actions/workflows/check.yml)
+[![CodeQL](https://github.com/clpi/clp-mcp/actions/workflows/codeql.yml/badge.svg)](https://github.com/clpi/clp-mcp/actions/workflows/codeql.yml)
+[![Docker Image](https://github.com/clpi/clp-mcp/actions/workflows/docker-image.yml/badge.svg)](https://github.com/clpi/clp-mcp/actions/workflows/docker-image.yml)
+
 A Model Context Protocol (MCP) server providing extensive DevOps tools, resources, and context memory for infrastructure management, CI/CD, and cloud operations.
 
 ## Features
@@ -67,22 +71,84 @@ A Model Context Protocol (MCP) server providing extensive DevOps tools, resource
 
 ### Installation
 
+#### From NPM
 ```bash
-npm install
+npm install -g clp-mcp
 ```
+
+#### From Binary
+Download the latest release for your platform from [GitHub Releases](https://github.com/clpi/clp-mcp/releases).
+
+**Linux**:
+```bash
+wget https://github.com/clpi/clp-mcp/releases/latest/download/clp-mcp-linux-x64.tar.gz
+tar -xzf clp-mcp-linux-x64.tar.gz
+chmod +x clp-mcp-linux-x64
+sudo mv clp-mcp-linux-x64 /usr/local/bin/clp-mcp
+```
+
+**macOS**:
+```bash
+# Homebrew (recommended)
+brew tap clpi/tap
+brew install clp-mcp
+
+# Or download binary
+wget https://github.com/clpi/clp-mcp/releases/latest/download/clp-mcp-darwin-x64.tar.gz
+tar -xzf clp-mcp-darwin-x64.tar.gz
+chmod +x clp-mcp-darwin-x64
+sudo mv clp-mcp-darwin-x64 /usr/local/bin/clp-mcp
+```
+
+**Windows**:
+```powershell
+# Download from releases and extract
+# Add to PATH or run directly
+```
+
+#### Package Managers
+
+See [DISTRIBUTION.md](./DISTRIBUTION.md) for detailed installation instructions for:
+- Debian/Ubuntu (APT)
+- Fedora/RHEL (DNF/RPM)
+- Arch Linux (AUR)
+- NixOS (Nix)
+- GNU Guix
+- Snap
+- Flatpak
+- Docker
 
 ### Development
 
 ```bash
 npm install
+npm run dev
 ```
 
 ## Running
 
 To run in development mode:
 
-```bash
-npm run dev
+## Documentation
+
+- [DEVOPS.md](./DEVOPS.md) - Comprehensive documentation of all tools, resources, and prompts
+- [DISTRIBUTION.md](./DISTRIBUTION.md) - Installation and distribution guide for all platforms
+- [QUICK_START.md](./QUICK_START.md) - Quick start guide for common use cases
+
+## Usage Examples
+
+### Infrastructure Analysis
+```typescript
+// Analyze Terraform configuration
+{
+  "tool": "cloud_analyze_infrastructure",
+  "arguments": {
+    "configPath": "./terraform/main.tf",
+    "provider": "aws",
+    "configType": "terraform",
+    "checkCosts": true
+  }
+}
 ```
 
 To build:
