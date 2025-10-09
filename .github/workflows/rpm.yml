@@ -1,0 +1,147 @@
+name: RPM Package
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+
+jobs:
+  build-rpm:
+    name: Build RPM Package
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:latest
+    steps:
+      - name: Install build tools
+        run: |
+          dnf install -y rpm-build rpmdevtools rpmlint
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get release info
+        id: release
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF##refs/*/}"
+            VERSION="${VERSION#v}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Setup RPM build directory
+        run: |
+          rpmdev-setuptree
+
+      - name: Download binary
+        run: |
+          VERSION="${{ steps.release.outputs.VERSION }}"
+          TAG="${{ steps.release.outputs.TAG }}"
+
+          curl -L -o ~/rpmbuild/SOURCES/clp-mcp-linux-x64 \
+            "https://github.com/${{ github.repository }}/releases/download/${TAG}/clp-mcp-linux-x64"
+
+          chmod +x ~/rpmbuild/SOURCES/clp-mcp-linux-x64
+
+      - name: Create RPM spec file
+        run: |
+          VERSION="${{ steps.release.outputs.VERSION }}"
+
+          cat > ~/rpmbuild/SPECS/clp-mcp.spec <<EOF
+          Name:           clp-mcp
+          Version:        $VERSION
+          Release:        1%{?dist}
+          Summary:        Comprehensive DevOps Context Server for Model Context Protocol
+
+          License:        ISC
+          URL:            https://github.com/${{ github.repository }}
+          Source0:        clp-mcp-linux-x64
+
+          BuildArch:      x86_64
+          Requires:       glibc
+
+          %description
+          CLP MCP is a comprehensive DevOps context server that provides extensive
+          tools, resources, and context memory for infrastructure management, CI/CD,
+          and cloud operations using the Model Context Protocol.
+
+          %prep
+          # No prep needed for binary package
+
+          %build
+          # No build needed for binary package
+
+          %install
+          mkdir -p %{buildroot}%{_bindir}
+          install -m 755 %{SOURCE0} %{buildroot}%{_bindir}/clp-mcp
+
+          %files
+          %{_bindir}/clp-mcp
+
+          %changelog
+          * $(date "+%a %b %d %Y") GitHub Actions <actions@github.com> - $VERSION-1
+          - Release $VERSION
+          EOF
+
+      - name: Build RPM
+        run: |
+          rpmbuild -ba ~/rpmbuild/SPECS/clp-mcp.spec
+
+      - name: Check RPM with rpmlint
+        run: |
+          rpmlint ~/rpmbuild/RPMS/x86_64/clp-mcp-*.rpm || true
+
+      - name: Upload RPM
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-package
+          path: ~/rpmbuild/RPMS/x86_64/clp-mcp-*.rpm
+
+      - name: Upload SRPM
+        uses: actions/upload-artifact@v4
+        with:
+          name: srpm-package
+          path: ~/rpmbuild/SRPMS/clp-mcp-*.src.rpm
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ~/rpmbuild/RPMS/x86_64/clp-mcp-*.rpm
+            ~/rpmbuild/SRPMS/clp-mcp-*.src.rpm
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-copr-instructions:
+    name: Create COPR Instructions
+    runs-on: ubuntu-latest
+    needs: build-rpm
+    steps:
+      - name: Download RPM
+        uses: actions/download-artifact@v4
+        with:
+          name: rpm-package
+
+      - name: Instructions
+        run: |
+          echo "RPM package created!"
+          echo ""
+          echo "To publish to Fedora COPR:"
+          echo "1. Create a COPR account at https://copr.fedorainfracloud.org/"
+          echo "2. Create a new project for clp-mcp"
+          echo "3. Upload the SRPM file"
+          echo ""
+          echo "Users can then install with:"
+          echo "  sudo dnf copr enable <username>/clp-mcp"
+          echo "  sudo dnf install clp-mcp"
+          echo ""
+          echo "Or install directly from the RPM:"
+          echo "  sudo dnf install clp-mcp-*.rpm"

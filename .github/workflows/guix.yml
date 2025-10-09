@@ -1,0 +1,148 @@
+name: Guix Package
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+
+jobs:
+  create-guix-package:
+    name: Create Guix Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Guix
+        run: |
+          cd /tmp
+          wget https://git.savannah.gnu.org/cgit/guix.git/plain/etc/guix-install.sh
+          chmod +x guix-install.sh
+          # For CI, we'll just create the package definition without installing Guix
+          echo "Guix installation skipped in CI - package definition will be created"
+
+      - name: Get release info
+        id: release
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF##refs/*/}"
+            VERSION="${VERSION#v}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download binary and calculate hash
+        run: |
+          VERSION="${{ steps.release.outputs.VERSION }}"
+          TAG="${{ steps.release.outputs.TAG }}"
+
+          curl -L -o clp-mcp-linux-x64 \
+            "https://github.com/${{ github.repository }}/releases/download/${TAG}/clp-mcp-linux-x64"
+
+          # Guix uses base32 encoding for hashes
+          SHA256=$(sha256sum clp-mcp-linux-x64 | awk '{print $1}')
+          echo "SHA256=$SHA256" >> $GITHUB_ENV
+
+      - name: Generate Guix package definition
+        run: |
+          VERSION="${{ steps.release.outputs.VERSION }}"
+          TAG="${{ steps.release.outputs.TAG }}"
+
+          mkdir -p guix
+          cat > guix/clp-mcp.scm <<EOF
+          ;;; GNU Guix package definition for clp-mcp
+          ;;;
+          ;;; This file is part of GNU Guix.
+          ;;;
+          ;;; GNU Guix is free software; you can redistribute it and/or modify it
+          ;;; under the terms of the GNU General Public License as published by
+          ;;; the Free Software Foundation; either version 3 of the License, or (at
+          ;;; your option) any later version.
+
+          (define-module (clp-mcp)
+            #:use-module (guix packages)
+            #:use-module (guix download)
+            #:use-module (guix build-system copy)
+            #:use-module ((guix licenses) #:prefix license:)
+            #:use-module (gnu packages base))
+
+          (define-public clp-mcp
+            (package
+              (name "clp-mcp")
+              (version "$VERSION")
+              (source (origin
+                        (method url-fetch)
+                        (uri (string-append
+                              "https://github.com/${{ github.repository }}/releases/download/"
+                              "${TAG}/clp-mcp-linux-x64"))
+                        (sha256
+                         (base32
+                          ;; Note: Convert SHA256 hex to base32 using: guix hash -x <file>
+                          "0000000000000000000000000000000000000000000000000000"))))
+              (build-system copy-build-system)
+              (arguments
+               '(#:install-plan
+                 '(("clp-mcp-linux-x64" "bin/clp-mcp"))))
+              (native-inputs
+               \`(("patchelf" ,patchelf)))
+              (synopsis "Comprehensive DevOps Context Server for Model Context Protocol")
+              (description
+               "CLP MCP is a comprehensive DevOps context server that provides extensive
+          tools, resources, and context memory for infrastructure management, CI/CD,
+          and cloud operations using the Model Context Protocol.  It includes support
+          for Ansible, Jenkins, Kubernetes, Docker, Terraform, and major cloud providers.")
+              (home-page "https://github.com/${{ github.repository }}")
+              (license license:isc)))
+
+          clp-mcp
+          EOF
+
+      - name: Generate channel definition
+        run: |
+          mkdir -p guix
+          cat > guix/channel.scm <<EOF
+          (channel
+            (name 'clp-mcp)
+            (url "https://github.com/${{ github.repository }}")
+            (introduction
+             (make-channel-introduction
+              "${{ github.sha }}"
+              (openpgp-fingerprint
+               "XXXX XXXX XXXX XXXX XXXX  XXXX XXXX XXXX XXXX XXXX"))))
+          EOF
+
+      - name: Upload Guix files
+        uses: actions/upload-artifact@v4
+        with:
+          name: guix-package
+          path: guix/
+
+      - name: Instructions
+        run: |
+          echo "Guix package definition created!"
+          echo ""
+          echo "To use this package:"
+          echo "1. Update the base32 hash in clp-mcp.scm using:"
+          echo "   guix hash clp-mcp-linux-x64"
+          echo ""
+          echo "2. Add as a channel in ~/.config/guix/channels.scm:"
+          echo "   (cons* (channel"
+          echo "            (name 'clp-mcp)"
+          echo "            (url \"https://github.com/${{ github.repository }}\"))"
+          echo "          %default-channels)"
+          echo ""
+          echo "3. Update and install:"
+          echo "   guix pull"
+          echo "   guix install clp-mcp"
+          echo ""
+          echo "To submit to GNU Guix:"
+          echo "1. Clone https://git.savannah.gnu.org/git/guix.git"
+          echo "2. Add package to gnu/packages/"
+          echo "3. Submit a patch to guix-patches@gnu.org"

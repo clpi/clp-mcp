@@ -1,0 +1,110 @@
+name: Homebrew Distribution
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+
+jobs:
+  update-formula:
+    name: Update Homebrew Formula
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get release info
+        id: release
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF##refs/*/}"
+            VERSION="${VERSION#v}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download release binaries
+        run: |
+          VERSION="${{ steps.release.outputs.VERSION }}"
+          TAG="${{ steps.release.outputs.TAG }}"
+
+          # Download macOS binaries
+          curl -L -o clp-mcp-darwin-x64 "https://github.com/${{ github.repository }}/releases/download/${TAG}/clp-mcp-darwin-x64"
+          curl -L -o clp-mcp-darwin-arm64 "https://github.com/${{ github.repository }}/releases/download/${TAG}/clp-mcp-darwin-arm64"
+
+          # Calculate checksums
+          SHA256_X64=$(shasum -a 256 clp-mcp-darwin-x64 | awk '{print $1}')
+          SHA256_ARM64=$(shasum -a 256 clp-mcp-darwin-arm64 | awk '{print $1}')
+
+          echo "SHA256_X64=$SHA256_X64" >> $GITHUB_ENV
+          echo "SHA256_ARM64=$SHA256_ARM64" >> $GITHUB_ENV
+
+      - name: Generate Homebrew Formula
+        run: |
+          VERSION="${{ steps.release.outputs.VERSION }}"
+          TAG="${{ steps.release.outputs.TAG }}"
+
+          mkdir -p Formula
+          cat > Formula/clp-mcp.rb <<EOF
+          class ClpMcp < Formula
+            desc "Comprehensive DevOps Context Server for Model Context Protocol"
+            homepage "https://github.com/${{ github.repository }}"
+            version "$VERSION"
+
+            if Hardware::CPU.intel?
+              url "https://github.com/${{ github.repository }}/releases/download/${TAG}/clp-mcp-darwin-x64"
+              sha256 "${{ env.SHA256_X64 }}"
+            else
+              url "https://github.com/${{ github.repository }}/releases/download/${TAG}/clp-mcp-darwin-arm64"
+              sha256 "${{ env.SHA256_ARM64 }}"
+            end
+
+            def install
+              if Hardware::CPU.intel?
+                bin.install "clp-mcp-darwin-x64" => "clp-mcp"
+              else
+                bin.install "clp-mcp-darwin-arm64" => "clp-mcp"
+              end
+            end
+
+            test do
+              system "#{bin}/clp-mcp", "--help"
+            end
+          end
+          EOF
+
+      - name: Create homebrew-tap repository if needed
+        run: |
+          echo "Formula created at Formula/clp-mcp.rb"
+          echo "To publish, create a homebrew-tap repository at:"
+          echo "https://github.com/${{ github.repository_owner }}/homebrew-tap"
+          echo "And push this formula to it"
+
+      - name: Upload Formula artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: homebrew-formula
+          path: Formula/clp-mcp.rb
+
+      # This step requires a separate homebrew-tap repository
+      # Uncomment when ready to auto-publish to tap
+      # - name: Push to homebrew-tap
+      #   run: |
+      #     git clone https://github.com/${{ github.repository_owner }}/homebrew-tap
+      #     cd homebrew-tap
+      #     mkdir -p Formula
+      #     cp ../Formula/clp-mcp.rb Formula/
+      #     git config user.name "GitHub Actions"
+      #     git config user.email "actions@github.com"
+      #     git add Formula/clp-mcp.rb
+      #     git commit -m "Update clp-mcp to ${{ steps.release.outputs.VERSION }}"
+      #     git push
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}

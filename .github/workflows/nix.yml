@@ -1,0 +1,128 @@
+name: Nix Package
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+
+jobs:
+  create-nix-package:
+    name: Create Nix Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v24
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Get release info
+        id: release
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF##refs/*/}"
+            VERSION="${VERSION#v}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Generate Nix derivation
+        run: |
+          VERSION="${{ steps.release.outputs.VERSION }}"
+          TAG="${{ steps.release.outputs.TAG }}"
+          REPO_URL="https://github.com/${{ github.repository }}"
+
+          # Download source tarball to get hash
+          curl -L -o source.tar.gz "${REPO_URL}/archive/${TAG}.tar.gz"
+          HASH=$(nix-hash --type sha256 --flat source.tar.gz)
+
+          mkdir -p nix
+          cat > nix/default.nix <<EOF
+          { lib
+          , stdenv
+          , fetchurl
+          , autoPatchelfHook
+          , unzip
+          }:
+
+          stdenv.mkDerivation rec {
+            pname = "clp-mcp";
+            version = "$VERSION";
+
+            src = fetchurl {
+              url = "${REPO_URL}/releases/download/${TAG}/clp-mcp-linux-x64";
+              sha256 = ""; # Will be filled after release
+            };
+
+            dontUnpack = true;
+            dontBuild = true;
+
+            nativeBuildInputs = [ autoPatchelfHook ];
+
+            installPhase = ''
+              install -Dm755 \$src \$out/bin/clp-mcp
+            '';
+
+            meta = with lib; {
+              description = "Comprehensive DevOps Context Server for Model Context Protocol";
+              homepage = "${REPO_URL}";
+              license = licenses.isc;
+              maintainers = [ ];
+              platforms = [ "x86_64-linux" "aarch64-linux" ];
+            };
+          }
+          EOF
+
+          # Also create a flake.nix
+          cat > nix/flake.nix <<EOF
+          {
+            description = "CLP MCP - Comprehensive DevOps Context Server";
+
+            inputs = {
+              nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+              flake-utils.url = "github:numtide/flake-utils";
+            };
+
+            outputs = { self, nixpkgs, flake-utils }:
+              flake-utils.lib.eachDefaultSystem (system:
+                let
+                  pkgs = nixpkgs.legacyPackages.\${system};
+                in
+                {
+                  packages.default = pkgs.callPackage ./default.nix { };
+
+                  apps.default = {
+                    type = "app";
+                    program = "\${self.packages.\${system}.default}/bin/clp-mcp";
+                  };
+                }
+              );
+          }
+          EOF
+
+      - name: Upload Nix files
+        uses: actions/upload-artifact@v4
+        with:
+          name: nix-package
+          path: nix/
+
+      - name: Instructions
+        run: |
+          echo "Nix package files created!"
+          echo ""
+          echo "To submit to nixpkgs:"
+          echo "1. Fork https://github.com/NixOS/nixpkgs"
+          echo "2. Add the package to pkgs/by-name/cl/clp-mcp/package.nix"
+          echo "3. Update the sha256 hash after release binaries are available"
+          echo "4. Submit a PR to nixpkgs"
+          echo ""
+          echo "Users can install with: nix profile install nixpkgs#clp-mcp"

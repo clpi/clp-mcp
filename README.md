@@ -27,25 +27,62 @@ A Model Context Protocol (MCP) server providing extensive DevOps tools, resource
 - Disaster recovery plans
 - Security audit checklists
 
-## Quick Start
+## Installation
 
-### Installation
+### NPM (for development)
 
 ```bash
 npm install
-```
-
-### Development
-
-```bash
 npm run dev
 ```
 
-### Build
+### Pre-built Binaries
+
+Download binaries for your platform from [GitHub Releases](https://github.com/clpi/clp-mcp/releases):
 
 ```bash
-npm run build
+# Linux
+curl -L -o clp-mcp https://github.com/clpi/clp-mcp/releases/latest/download/clp-mcp-linux-x64
+chmod +x clp-mcp
+
+# macOS (Intel)
+curl -L -o clp-mcp https://github.com/clpi/clp-mcp/releases/latest/download/clp-mcp-darwin-x64
+chmod +x clp-mcp
+
+# macOS (Apple Silicon)
+curl -L -o clp-mcp https://github.com/clpi/clp-mcp/releases/latest/download/clp-mcp-darwin-arm64
+chmod +x clp-mcp
 ```
+
+### Package Managers
+
+**Homebrew (macOS)**
+```bash
+brew tap clpi/tap
+brew install clp-mcp
+```
+
+**Nix/NixOS**
+```bash
+nix profile install github:clpi/clp-mcp
+```
+
+**AUR (Arch Linux)**
+```bash
+yay -S clp-mcp-bin
+```
+
+**DNF/RPM (Fedora, RHEL, CentOS)**
+```bash
+sudo dnf install ./clp-mcp-*.rpm
+```
+
+**Guix**
+```bash
+guix install clp-mcp
+```
+
+See [DISTRIBUTION.md](./DISTRIBUTION.md) for detailed installation instructions and package manager setup.
 
 ## Documentation
 
