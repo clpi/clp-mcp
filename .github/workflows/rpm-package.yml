@@ -1,0 +1,109 @@
+name: Build RPM Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-rpm:
+    name: Build RPM Package
+    runs-on: ubuntu-latest
+    container: fedora:latest
+    
+    steps:
+      - name: Install dependencies
+        run: |
+          dnf install -y git rpm-build rpmdevtools curl tar gzip nodejs
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          else
+            VERSION="${GITHUB_REF##refs/*/}"
+            VERSION="${VERSION#v}"
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
+          fi
+
+      - name: Download binary
+        run: |
+          mkdir -p rpmbuild/{BUILD,RPMS,SOURCES,SPECS,SRPMS}
+          curl -L -o clp-mcp \
+            https://github.com/${{ github.repository }}/releases/download/v${{ env.VERSION }}/clp-mcp-${{ env.VERSION }}-linux-x64.tar.gz
+          tar -xzf clp-mcp
+          mv clp-mcp-linux-x64 rpmbuild/SOURCES/clp-mcp
+
+      - name: Create RPM spec file
+        run: |
+          cat > rpmbuild/SPECS/clp-mcp.spec << 'EOF'
+          Name:           clp-mcp
+          Version:        ${{ env.VERSION }}
+          Release:        1%{?dist}
+          Summary:        DevOps-focused MCP server with infrastructure tooling
+          
+          License:        ISC
+          URL:            https://github.com/${{ github.repository }}
+          Source0:        clp-mcp
+          
+          BuildArch:      x86_64
+          
+          %description
+          DevOps-focused MCP server with memory and comprehensive infrastructure
+          tooling for Jenkins, Ansible, Terraform, Kubernetes, and Docker.
+          
+          %prep
+          # Nothing to prep, we have a pre-built binary
+          
+          %build
+          # Nothing to build
+          
+          %install
+          mkdir -p %{buildroot}%{_bindir}
+          install -m 755 %{SOURCE0} %{buildroot}%{_bindir}/clp-mcp
+          
+          %files
+          %{_bindir}/clp-mcp
+          
+          %changelog
+          * $(date "+%a %b %d %Y") ${{ github.repository_owner }} <noreply@github.com> - ${{ env.VERSION }}-1
+          - Release version ${{ env.VERSION }}
+          EOF
+
+      - name: Build RPM
+        run: |
+          rpmbuild --define "_topdir $(pwd)/rpmbuild" -ba rpmbuild/SPECS/clp-mcp.spec
+
+      - name: Find and rename RPM
+        run: |
+          find rpmbuild/RPMS -name "*.rpm" -exec cp {} clp-mcp-${{ env.VERSION }}-1.x86_64.rpm \;
+
+      - name: Create checksum
+        run: |
+          sha256sum clp-mcp-${{ env.VERSION }}-1.x86_64.rpm > clp-mcp-${{ env.VERSION }}-1.x86_64.rpm.sha256
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            clp-mcp-${{ env.VERSION }}-1.x86_64.rpm
+            clp-mcp-${{ env.VERSION }}-1.x86_64.rpm.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm-package
+          path: clp-mcp-${{ env.VERSION }}-1.x86_64.rpm

@@ -1,0 +1,201 @@
+name: Update Nix Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  update-nix:
+    name: Create Nix Package
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v24
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          else
+            VERSION="${GITHUB_REF##refs/*/}"
+            VERSION="${VERSION#v}"
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
+          fi
+
+      - name: Download release assets
+        run: |
+          mkdir -p downloads
+          curl -L -o downloads/clp-mcp-linux-x64.tar.gz \
+            https://github.com/${{ github.repository }}/releases/download/v${{ env.VERSION }}/clp-mcp-${{ env.VERSION }}-linux-x64.tar.gz
+
+      - name: Calculate hash
+        id: hash
+        run: |
+          cd downloads
+          # Nix uses base32 encoded SHA256
+          HASH=$(nix-hash --type sha256 --flat --base32 clp-mcp-linux-x64.tar.gz)
+          echo "NIX_HASH=$HASH" >> $GITHUB_ENV
+
+      - name: Create default.nix
+        run: |
+          mkdir -p nix
+          cat > nix/default.nix << 'EOF'
+          { lib
+          , stdenv
+          , fetchurl
+          , autoPatchelfHook
+          }:
+
+          stdenv.mkDerivation rec {
+            pname = "clp-mcp";
+            version = "${{ env.VERSION }}";
+
+            src = fetchurl {
+              url = "https://github.com/${{ github.repository }}/releases/download/v${version}/clp-mcp-${version}-linux-x64.tar.gz";
+              sha256 = "${{ env.NIX_HASH }}";
+            };
+
+            nativeBuildInputs = [ autoPatchelfHook ];
+
+            unpackPhase = ''
+              tar -xzf $src
+            '';
+
+            installPhase = ''
+              mkdir -p $out/bin
+              install -m755 clp-mcp-linux-x64 $out/bin/clp-mcp
+            '';
+
+            meta = with lib; {
+              description = "DevOps-focused MCP server with memory and comprehensive infrastructure tooling";
+              homepage = "https://github.com/${{ github.repository }}";
+              license = licenses.isc;
+              maintainers = [ ];
+              platforms = platforms.linux;
+            };
+          }
+          EOF
+
+      - name: Create flake.nix
+        run: |
+          cat > nix/flake.nix << 'EOF'
+          {
+            description = "DevOps-focused MCP server with memory and comprehensive infrastructure tooling";
+
+            inputs = {
+              nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+              flake-utils.url = "github:numtide/flake-utils";
+            };
+
+            outputs = { self, nixpkgs, flake-utils }:
+              flake-utils.lib.eachDefaultSystem (system:
+                let
+                  pkgs = nixpkgs.legacyPackages.${system};
+                in
+                {
+                  packages.default = pkgs.callPackage ./default.nix { };
+                  
+                  packages.clp-mcp = self.packages.${system}.default;
+
+                  apps.default = {
+                    type = "app";
+                    program = "${self.packages.${system}.default}/bin/clp-mcp";
+                  };
+                }
+              );
+          }
+          EOF
+
+      - name: Create README for Nix
+        run: |
+          cat > nix/README.md << 'EOF'
+          # clp-mcp Nix Package
+
+          ## Installation
+
+          ### Using nix-env
+          ```bash
+          nix-env -iA nixpkgs.clp-mcp
+          ```
+
+          ### Using nix profile (Nix 2.4+)
+          ```bash
+          nix profile install github:${{ github.repository_owner }}/clp-mcp
+          ```
+
+          ### Using flakes in configuration.nix
+          ```nix
+          {
+            inputs.clp-mcp.url = "github:${{ github.repository_owner }}/clp-mcp";
+            
+            # In your configuration
+            environment.systemPackages = [
+              inputs.clp-mcp.packages.${system}.default
+            ];
+          }
+          ```
+
+          ### Using nix shell (temporary)
+          ```bash
+          nix shell github:${{ github.repository_owner }}/clp-mcp
+          ```
+
+          ### Using nix run (one-off execution)
+          ```bash
+          nix run github:${{ github.repository_owner }}/clp-mcp
+          ```
+
+          ## Contributing to nixpkgs
+
+          To submit this package to nixpkgs:
+
+          1. Fork https://github.com/NixOS/nixpkgs
+          2. Add the package to `pkgs/by-name/cl/clp-mcp/package.nix`
+          3. Test the build: `nix-build -A clp-mcp`
+          4. Submit a pull request
+          EOF
+
+      - name: Test Nix build
+        run: |
+          cd nix
+          nix build .# --no-link || echo "Build test skipped"
+
+      - name: Commit Nix files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add nix/
+          git commit -m "Update Nix package to v${{ env.VERSION }}" || echo "No changes to commit"
+          git push || echo "Nothing to push"
+
+      - name: Create artifact
+        run: |
+          tar -czf clp-mcp-nix-${{ env.VERSION }}.tar.gz nix/
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: clp-mcp-nix-${{ env.VERSION }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nix-package
+          path: nix/

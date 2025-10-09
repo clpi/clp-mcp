@@ -1,0 +1,125 @@
+name: Build Snap Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-snap:
+    name: Build Snap Package
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          else
+            VERSION="${GITHUB_REF##refs/*/}"
+            VERSION="${VERSION#v}"
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Create binary
+        run: |
+          bun build src/index.ts --compile --target=bun-linux-x64 --outfile clp-mcp
+
+      - name: Create snapcraft.yaml
+        run: |
+          mkdir -p snap
+          cat > snap/snapcraft.yaml << 'EOF'
+          name: clp-mcp
+          version: '${{ env.VERSION }}'
+          summary: DevOps-focused MCP server with infrastructure tooling
+          description: |
+            DevOps-focused MCP server with memory and comprehensive infrastructure
+            tooling for Jenkins, Ansible, Terraform, Kubernetes, and Docker.
+          
+          base: core22
+          confinement: strict
+          grade: stable
+          
+          architectures:
+            - build-on: amd64
+          
+          apps:
+            clp-mcp:
+              command: bin/clp-mcp
+              plugs:
+                - network
+                - network-bind
+                - home
+          
+          parts:
+            clp-mcp:
+              plugin: dump
+              source: .
+              organize:
+                clp-mcp: bin/clp-mcp
+          EOF
+
+      - name: Install Snapcraft
+        run: |
+          sudo snap install snapcraft --classic
+
+      - name: Build Snap
+        run: |
+          snapcraft --use-lxd || snapcraft --destructive-mode
+
+      - name: Rename snap
+        run: |
+          mv *.snap clp-mcp_${{ env.VERSION }}_amd64.snap || true
+
+      - name: Create checksum
+        run: |
+          sha256sum clp-mcp_${{ env.VERSION }}_amd64.snap > clp-mcp_${{ env.VERSION }}_amd64.snap.sha256
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            clp-mcp_${{ env.VERSION }}_amd64.snap
+            clp-mcp_${{ env.VERSION }}_amd64.snap.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: snap-package
+          path: clp-mcp_${{ env.VERSION }}_amd64.snap
+
+      - name: Publish to Snap Store
+        if: secrets.SNAPCRAFT_TOKEN != ''
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
+        run: |
+          snapcraft upload --release=stable clp-mcp_${{ env.VERSION }}_amd64.snap

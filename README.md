@@ -1,4 +1,44 @@
-# CLP MCP - Comprehensive DevOps Context Server
+# CLP MCP Server
+
+A Model Context Protocol (MCP) server with a dynamic long-term memory system.
+
+## Features
+
+### 🧠 Dynamic Long-Term Memory System
+
+The CLP MCP server includes a comprehensive memory system that provides:
+
+- **Intelligent Storage**: Store information with rich metadata (context, tags, importance)
+- **Smart Retrieval**: Advanced search and recall with relevance ranking
+- **Temporal Awareness**: Track when information was created and accessed
+- **Relationship Mapping**: Automatically identify related memories
+- **Pattern Detection**: Identify recurring patterns across stored information
+- **Access Analytics**: Track usage patterns and access frequency
+
+See [MEMORY_SYSTEM.md](./MEMORY_SYSTEM.md) for detailed documentation.
+
+### Available MCP Tools
+
+- `memory_store` - Store new memories with metadata
+- `memory_recall` - Recall memories with advanced filtering
+- `memory_search` - Full-text search across memories
+- `memory_get_recent` - Get recently stored memories
+- `memory_get_important` - Get high-importance memories
+- `memory_stats` - Get memory system statistics
+- `memory_consolidate` - Identify patterns and generate summaries
+
+### Available MCP Resources
+
+- `memory://all` - Access all stored memories
+- `memory://stats` - Memory system statistics
+- `memory://recent` - Recent memories
+- `memory://important` - Important memories
+
+## Installation
+
+[![Build Check](https://github.com/clpi/clp-mcp/actions/workflows/check.yml/badge.svg)](https://github.com/clpi/clp-mcp/actions/workflows/check.yml)
+[![CodeQL](https://github.com/clpi/clp-mcp/actions/workflows/codeql.yml/badge.svg)](https://github.com/clpi/clp-mcp/actions/workflows/codeql.yml)
+[![Docker Image](https://github.com/clpi/clp-mcp/actions/workflows/docker-image.yml/badge.svg)](https://github.com/clpi/clp-mcp/actions/workflows/docker-image.yml)
 
 A Model Context Protocol (MCP) server providing extensive DevOps tools, resources, and context memory for infrastructure management, CI/CD, and cloud operations.
 
@@ -38,21 +78,63 @@ A Model Context Protocol (MCP) server providing extensive DevOps tools, resource
 
 ### Installation
 
+#### From NPM
 ```bash
-npm install
+npm install -g clp-mcp
 ```
+
+#### From Binary
+Download the latest release for your platform from [GitHub Releases](https://github.com/clpi/clp-mcp/releases).
+
+**Linux**:
+```bash
+wget https://github.com/clpi/clp-mcp/releases/latest/download/clp-mcp-linux-x64.tar.gz
+tar -xzf clp-mcp-linux-x64.tar.gz
+chmod +x clp-mcp-linux-x64
+sudo mv clp-mcp-linux-x64 /usr/local/bin/clp-mcp
+```
+
+**macOS**:
+```bash
+# Homebrew (recommended)
+brew tap clpi/tap
+brew install clp-mcp
+
+# Or download binary
+wget https://github.com/clpi/clp-mcp/releases/latest/download/clp-mcp-darwin-x64.tar.gz
+tar -xzf clp-mcp-darwin-x64.tar.gz
+chmod +x clp-mcp-darwin-x64
+sudo mv clp-mcp-darwin-x64 /usr/local/bin/clp-mcp
+```
+
+**Windows**:
+```powershell
+# Download from releases and extract
+# Add to PATH or run directly
+```
+
+#### Package Managers
+
+See [DISTRIBUTION.md](./DISTRIBUTION.md) for detailed installation instructions for:
+- Debian/Ubuntu (APT)
+- Fedora/RHEL (DNF/RPM)
+- Arch Linux (AUR)
+- NixOS (Nix)
+- GNU Guix
+- Snap
+- Flatpak
+- Docker
 
 ### Development
 
 ```bash
+npm install
 npm run dev
 ```
 
-### Build
+## Running
 
-```bash
-npm run build
-```
+To run in development mode:
 
 ## Documentation
 
@@ -77,18 +159,7 @@ npm run build
 }
 ```
 
-### Kubernetes Security Scan
-```typescript
-// Scan Kubernetes manifests
-{
-  "tool": "k8s_security_scan",
-  "arguments": {
-    "resourcePath": "./k8s/",
-    "scanType": "all",
-    "severity": "high"
-  }
-}
-```
+To build:
 
 ### Knowledge Graph - Model Infrastructure
 ```typescript
@@ -141,53 +212,17 @@ npm run build
 }
 ```
 
-## Architecture
+## Testing
 
-This MCP server is built with:
-- **@modelcontextprotocol/sdk**: MCP TypeScript SDK
-- **@smithery/sdk**: Smithery platform integration
-- **zod**: Schema validation
+Test the memory system:
 
-The server provides:
-- 31+ DevOps tools for infrastructure and CI/CD management
-- 15+ knowledge resources with best practices
-- 7 intelligent prompts for common scenarios
-- Repository context memory and tracking
+```bash
+npx tsx test-memory.ts
+```
 
-## Use Cases
+## Documentation
 
-### 1. DevOps Automation
-- Analyze and optimize infrastructure configurations
-- Generate CI/CD pipelines
-- Validate Kubernetes deployments
-- Audit security configurations
+- [Memory System Documentation](./MEMORY_SYSTEM.md) - Comprehensive guide to the memory system
+- [Agent Guidelines](./AGENTS.md) - Development workflow and guidelines
 
-### 2. Cloud Operations
-- Plan cloud migrations
-- Optimize costs
-- Design disaster recovery strategies
-- Implement multi-cloud best practices
-
-### 3. Knowledge Management
-- Track repository changes and history
-- Build knowledge graphs
-- Store decisions and context
-- Map infrastructure dependencies
-
-### 4. Security & Compliance
-- Security scanning and auditing
-- Compliance framework alignment
-- Best practices validation
-- Vulnerability tracking
-
-## Contributing
-
-Contributions are welcome! Please see [DEVOPS.md](./DEVOPS.md) for information on adding new tools, resources, or prompts.
-
-## License
-
-ISC
-
-## Support
-
-For issues or questions, please open an issue on GitHub.
+This project was created using `bun init` in bun v1.2.23. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
