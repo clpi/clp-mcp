@@ -13,6 +13,29 @@ CLP MCP provides pre-built binaries and packages for multiple platforms and pack
 - **RPM**: Fedora, RHEL, CentOS via DNF/YUM
 - **Guix**: GNU Guix package manager
 
+### Distribution Flow
+
+```
+GitHub Release Created
+        |
+        ├─> build-binaries.yml ──> Upload binaries to release
+        |     ├─> Linux (x64, ARM64)
+        |     ├─> macOS (x64, ARM64)
+        |     └─> Windows (x64)
+        |
+        ├─> homebrew.yml ──> Generate formula ──> Upload artifact
+        |
+        ├─> nix.yml ──> Generate derivation ──> Upload artifact
+        |
+        ├─> aur.yml ──> Generate PKGBUILD ──> Upload artifact
+        |
+        ├─> rpm.yml ──> Build RPM ──> Upload to release
+        |
+        └─> guix.yml ──> Generate package.scm ──> Upload artifact
+```
+
+All workflows run in parallel and complete within ~5-10 minutes of a release being published.
+
 ## Automated Workflows
 
 ### 1. Binary Build Workflow (`.github/workflows/build-binaries.yml`)
