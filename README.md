@@ -36,7 +36,42 @@ See [MEMORY_SYSTEM.md](./MEMORY_SYSTEM.md) for detailed documentation.
 
 ## Installation
 
-To install dependencies:
+A Model Context Protocol (MCP) server providing extensive DevOps tools, resources, and context memory for infrastructure management, CI/CD, and cloud operations.
+
+## Features
+
+### 🔧 DevOps Tools
+- **Ansible**: Playbook analysis, role generation, inventory management, and Vault operations
+- **Jenkins**: Pipeline analysis and generation, plugin lookup, credential management
+- **Kubernetes**: Manifest analysis, resource generation, security scanning, Helm chart support
+- **Cloud Services**: Infrastructure analysis, cost optimization, migration planning (AWS, Azure, GCP)
+- **Repository Context**: History tracking, file changes, dependency analysis, knowledge graphs
+
+### 📚 Knowledge Resources
+- Ansible best practices, modules, and playbook patterns
+- Jenkins pipeline patterns, shared libraries, and essential plugins
+- Kubernetes security, manifest patterns, and Helm best practices
+- Cloud provider best practices (AWS Well-Architected, Azure, GCP)
+- Terraform/IaC patterns and best practices
+
+### 💡 Intelligent Prompts
+- Infrastructure provisioning plans
+- CI/CD pipeline generation
+- Kubernetes deployment configurations
+- Ansible playbook generation
+- Cloud migration strategies
+- Disaster recovery plans
+- Security audit checklists
+
+## Quick Start
+
+### Installation
+
+```bash
+npm install
+```
+
+### Development
 
 ```bash
 npm install
