@@ -1,0 +1,129 @@
+name: AUR Package
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+
+jobs:
+  create-aur-package:
+    name: Create AUR Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get release info
+        id: release
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION="${GITHUB_REF##refs/*/}"
+            VERSION="${VERSION#v}"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TAG=v$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download binary and calculate checksums
+        run: |
+          VERSION="${{ steps.release.outputs.VERSION }}"
+          TAG="${{ steps.release.outputs.TAG }}"
+
+          # Download binary
+          curl -L -o clp-mcp-linux-x64 "https://github.com/${{ github.repository }}/releases/download/${TAG}/clp-mcp-linux-x64"
+
+          # Calculate checksums
+          SHA256SUM=$(sha256sum clp-mcp-linux-x64 | awk '{print $1}')
+          echo "SHA256SUM=$SHA256SUM" >> $GITHUB_ENV
+
+      - name: Generate PKGBUILD
+        run: |
+          VERSION="${{ steps.release.outputs.VERSION }}"
+          TAG="${{ steps.release.outputs.TAG }}"
+
+          mkdir -p aur
+          cat > aur/PKGBUILD <<EOF
+          # Maintainer: Your Name <your.email@example.com>
+          pkgname=clp-mcp-bin
+          pkgver=$VERSION
+          pkgrel=1
+          pkgdesc="Comprehensive DevOps Context Server for Model Context Protocol"
+          arch=('x86_64')
+          url="https://github.com/${{ github.repository }}"
+          license=('ISC')
+          provides=('clp-mcp')
+          conflicts=('clp-mcp')
+          source_x86_64=("https://github.com/${{ github.repository }}/releases/download/${TAG}/clp-mcp-linux-x64")
+          sha256sums_x86_64=('${{ env.SHA256SUM }}')
+
+          package() {
+              install -Dm755 "\${srcdir}/clp-mcp-linux-x64" "\${pkgdir}/usr/bin/clp-mcp"
+          }
+          EOF
+
+      - name: Generate .SRCINFO
+        run: |
+          cd aur
+          cat > .SRCINFO <<EOF
+          pkgbase = clp-mcp-bin
+          	pkgdesc = Comprehensive DevOps Context Server for Model Context Protocol
+          	pkgver = ${{ steps.release.outputs.VERSION }}
+          	pkgrel = 1
+          	url = https://github.com/${{ github.repository }}
+          	arch = x86_64
+          	license = ISC
+          	provides = clp-mcp
+          	conflicts = clp-mcp
+          	source_x86_64 = https://github.com/${{ github.repository }}/releases/download/${{ steps.release.outputs.TAG }}/clp-mcp-linux-x64
+          	sha256sums_x86_64 = ${{ env.SHA256SUM }}
+
+          pkgname = clp-mcp-bin
+          EOF
+
+      - name: Upload AUR files
+        uses: actions/upload-artifact@v4
+        with:
+          name: aur-package
+          path: aur/
+
+      - name: Instructions
+        run: |
+          echo "AUR package files created!"
+          echo ""
+          echo "To publish to AUR:"
+          echo "1. Create an account at https://aur.archlinux.org"
+          echo "2. Set up SSH key authentication"
+          echo "3. Clone the AUR repository:"
+          echo "   git clone ssh://aur@aur.archlinux.org/clp-mcp-bin.git"
+          echo "4. Copy PKGBUILD and .SRCINFO to the cloned directory"
+          echo "5. Commit and push:"
+          echo "   git add PKGBUILD .SRCINFO"
+          echo "   git commit -m 'Update to ${{ steps.release.outputs.VERSION }}'"
+          echo "   git push"
+          echo ""
+          echo "Users can install with: yay -S clp-mcp-bin"
+
+      # Uncomment to auto-publish to AUR (requires SSH key setup)
+      # - name: Publish to AUR
+      #   run: |
+      #     mkdir -p ~/.ssh
+      #     echo "${{ secrets.AUR_SSH_KEY }}" > ~/.ssh/aur
+      #     chmod 600 ~/.ssh/aur
+      #     ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+      #
+      #     git clone ssh://aur@aur.archlinux.org/clp-mcp-bin.git aur-repo
+      #     cd aur-repo
+      #     cp ../aur/PKGBUILD .
+      #     cp ../aur/.SRCINFO .
+      #
+      #     git config user.name "GitHub Actions"
+      #     git config user.email "actions@github.com"
+      #     git add PKGBUILD .SRCINFO
+      #     git commit -m "Update to ${{ steps.release.outputs.VERSION }}"
+      #     GIT_SSH_COMMAND="ssh -i ~/.ssh/aur" git push

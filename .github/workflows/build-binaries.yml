@@ -1,155 +1,93 @@
 name: Build Binaries
 
 on:
+  release:
+    types:
+      - published
   push:
-    branches: [main, master]
     tags:
       - 'v*'
-  pull_request:
-    branches: [main, master]
   workflow_dispatch:
-
-permissions:
-  contents: write
 
 jobs:
   build:
-    name: Build for ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.runner }}
+    name: Build for ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
-          # Linux builds
-          - os: linux
-            arch: x64
-            runner: ubuntu-latest
-            target: linux-x64
-          - os: linux
-            arch: arm64
-            runner: ubuntu-latest
-            target: linux-arm64
-          # macOS builds
-          - os: macos
-            arch: x64
-            runner: macos-latest
-            target: darwin-x64
-          - os: macos
-            arch: arm64
-            runner: macos-latest
-            target: darwin-arm64
-          # Windows builds
-          - os: windows
-            arch: x64
-            runner: windows-latest
-            target: win32-x64
-    
+          - os: ubuntu-latest
+            platform: linux-x64
+            target: bun-linux-x64
+          - os: ubuntu-latest
+            platform: linux-arm64
+            target: bun-linux-arm64
+          - os: macos-latest
+            platform: darwin-x64
+            target: bun-darwin-x64
+          - os: macos-latest
+            platform: darwin-arm64
+            target: bun-darwin-arm64
+          - os: windows-latest
+            platform: win32-x64
+            target: bun-windows-x64
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'lts/*'
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Cache dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb', '**/bun.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-bun-
-
       - name: Install dependencies
-        run: npm install
+        run: bun install --frozen-lockfile
 
-      - name: Build project
-        run: npm run build
+      - name: Build binary
+        run: bun build --compile --target=${{ matrix.target }} src/index.ts --outfile clp-mcp-${{ matrix.platform }}
 
-      - name: Create standalone binary (Bun)
-        if: matrix.os != 'windows'
-        run: |
-          bun build src/index.ts --compile --target=bun-${{ matrix.target }} --outfile clp-mcp-${{ matrix.target }}
+      - name: Rename Windows binary
+        if: matrix.platform == 'win32-x64'
+        shell: bash
+        run: mv clp-mcp-${{ matrix.platform }} clp-mcp-${{ matrix.platform }}.exe
 
-      - name: Create standalone binary (Bun) - Windows
-        if: matrix.os == 'windows'
-        run: |
-          bun build src/index.ts --compile --target=bun-${{ matrix.target }} --outfile clp-mcp-${{ matrix.target }}.exe
+      - name: Make binary executable
+        if: runner.os != 'Windows'
+        run: chmod +x clp-mcp-${{ matrix.platform }}
 
-      - name: Package binary (Unix)
-        if: matrix.os != 'windows'
-        run: |
-          mkdir -p dist
-          cp clp-mcp-${{ matrix.target }} dist/
-          chmod +x dist/clp-mcp-${{ matrix.target }}
-          cd dist
-          tar -czf clp-mcp-${{ matrix.target }}.tar.gz clp-mcp-${{ matrix.target }}
-          
-      - name: Package binary (Windows)
-        if: matrix.os == 'windows'
-        run: |
-          mkdir dist
-          cp clp-mcp-${{ matrix.target }}.exe dist/
-          cd dist
-          Compress-Archive -Path clp-mcp-${{ matrix.target }}.exe -DestinationPath clp-mcp-${{ matrix.target }}.zip
-
-      - name: Upload binary artifact (Unix)
-        if: matrix.os != 'windows'
+      - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: clp-mcp-${{ matrix.target }}
-          path: dist/clp-mcp-${{ matrix.target }}.tar.gz
-          retention-days: 90
+          name: clp-mcp-${{ matrix.platform }}
+          path: clp-mcp-${{ matrix.platform }}${{ matrix.platform == 'win32-x64' && '.exe' || '' }}
 
-      - name: Upload binary artifact (Windows)
-        if: matrix.os == 'windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: clp-mcp-${{ matrix.target }}
-          path: dist/clp-mcp-${{ matrix.target }}.zip
-          retention-days: 90
-
-  build-npm-package:
-    name: Build NPM Package
+  release:
+    name: Create Release
+    needs: build
     runs-on: ubuntu-latest
-    
+    if: github.event_name == 'release' || startsWith(github.ref, 'refs/tags/')
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
         with:
-          node-version: 'lts/*'
+          path: binaries
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build project
-        run: npm run build
-
-      - name: Package for NPM
+      - name: Create checksums
         run: |
-          mkdir -p npm-package
-          cp -r .smithery npm-package/
-          cp package.json npm-package/
-          cp README.md npm-package/
-          cd npm-package
-          tar -czf ../clp-mcp-npm.tar.gz .
+          cd binaries
+          for dir in */; do
+            cd "$dir"
+            for file in *; do
+              sha256sum "$file" > "$file.sha256"
+            done
+            cd ..
+          done
 
-      - name: Upload NPM package artifact
-        uses: actions/upload-artifact@v4
+      - name: Upload binaries to release
+        uses: softprops/action-gh-release@v1
+        if: github.event_name == 'release'
         with:
-          name: clp-mcp-npm-package
-          path: clp-mcp-npm.tar.gz
-          retention-days: 90
+          files: binaries/*/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

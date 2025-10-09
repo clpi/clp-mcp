@@ -74,67 +74,64 @@ A Model Context Protocol (MCP) server providing extensive DevOps tools, resource
 - Disaster recovery plans
 - Security audit checklists
 
-## Quick Start
+## Installation
 
-### Installation
+### NPM (for development)
 
 #### From NPM
-```bash
-npm install -g clp-mcp
-```
-
-#### From Binary
-Download the latest release for your platform from [GitHub Releases](https://github.com/clpi/clp-mcp/releases).
-
-**Linux**:
-```bash
-wget https://github.com/clpi/clp-mcp/releases/latest/download/clp-mcp-linux-x64.tar.gz
-tar -xzf clp-mcp-linux-x64.tar.gz
-chmod +x clp-mcp-linux-x64
-sudo mv clp-mcp-linux-x64 /usr/local/bin/clp-mcp
-```
-
-**macOS**:
-```bash
-# Homebrew (recommended)
-brew tap clpi/tap
-brew install clp-mcp
-
-# Or download binary
-wget https://github.com/clpi/clp-mcp/releases/latest/download/clp-mcp-darwin-x64.tar.gz
-tar -xzf clp-mcp-darwin-x64.tar.gz
-chmod +x clp-mcp-darwin-x64
-sudo mv clp-mcp-darwin-x64 /usr/local/bin/clp-mcp
-```
-
-**Windows**:
-```powershell
-# Download from releases and extract
-# Add to PATH or run directly
-```
-
-#### Package Managers
-
-See [DISTRIBUTION.md](./DISTRIBUTION.md) for detailed installation instructions for:
-- Debian/Ubuntu (APT)
-- Fedora/RHEL (DNF/RPM)
-- Arch Linux (AUR)
-- NixOS (Nix)
-- GNU Guix
-- Snap
-- Flatpak
-- Docker
-
-### Development
-
 ```bash
 npm install
 npm run dev
 ```
 
-## Running
+### Pre-built Binaries
 
-To run in development mode:
+Download binaries for your platform from [GitHub Releases](https://github.com/clpi/clp-mcp/releases):
+
+**Linux**:
+```bash
+# Linux
+curl -L -o clp-mcp https://github.com/clpi/clp-mcp/releases/latest/download/clp-mcp-linux-x64
+chmod +x clp-mcp
+
+# macOS (Intel)
+curl -L -o clp-mcp https://github.com/clpi/clp-mcp/releases/latest/download/clp-mcp-darwin-x64
+chmod +x clp-mcp
+
+# macOS (Apple Silicon)
+curl -L -o clp-mcp https://github.com/clpi/clp-mcp/releases/latest/download/clp-mcp-darwin-arm64
+chmod +x clp-mcp
+```
+
+### Package Managers
+
+**Homebrew (macOS)**
+```bash
+brew tap clpi/tap
+brew install clp-mcp
+```
+
+**Nix/NixOS**
+```bash
+nix profile install github:clpi/clp-mcp
+```
+
+**AUR (Arch Linux)**
+```bash
+yay -S clp-mcp-bin
+```
+
+**DNF/RPM (Fedora, RHEL, CentOS)**
+```bash
+sudo dnf install ./clp-mcp-*.rpm
+```
+
+**Guix**
+```bash
+guix install clp-mcp
+```
+
+See [DISTRIBUTION.md](./DISTRIBUTION.md) for detailed installation instructions and package manager setup.
 
 ## Documentation
 
