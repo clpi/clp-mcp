@@ -197,6 +197,24 @@ guix install clp-mcp
    - Generate package definitions
    - Upload artifacts
 
+### Testing Workflows
+
+Before creating a release, test the workflows manually:
+
+```bash
+# Test binary build workflow
+gh workflow run build-binaries.yml
+
+# Test individual package workflows
+gh workflow run homebrew.yml -f version=1.0.0-test
+gh workflow run nix.yml -f version=1.0.0-test
+gh workflow run aur.yml -f version=1.0.0-test
+gh workflow run rpm.yml -f version=1.0.0-test
+gh workflow run guix.yml -f version=1.0.0-test
+```
+
+All workflows support manual dispatch via the GitHub Actions UI or `gh` CLI.
+
 ### Post-Release Tasks
 
 After the automated workflows complete:

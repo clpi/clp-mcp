@@ -1,3 +1,11 @@
 .smithery
 node_modules
 .env
+
+# Build artifacts
+clp-mcp-*
+!.github/workflows/
+*.rpm
+*.deb
+*.pkg
+*.dmg
