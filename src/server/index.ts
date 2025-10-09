@@ -144,6 +144,146 @@ export default function serve({ config, }: { config: z.infer<typeof configSchema
     ({ limit }: { limit: number }) => memory.getReasoningHistory(limit)
   );
 
+  // Knowledge Graph and Entity Tools
+  mcp.registerTool(
+    "add_entity",
+    {
+      title: "Add Entity",
+      description: "Add an entity to the knowledge graph",
+      inputSchema: {
+        type: z.string().describe("Entity type (e.g., 'service', 'database', 'person', 'concept')"),
+        properties: z.record(z.any()).describe("Entity properties as key-value pairs"),
+        tags: z.array(z.string()).optional().describe("Tags for categorization"),
+      },
+    },
+    ({ type, properties, tags }: { type: string; properties: Record<string, any>; tags?: string[] }) =>
+      memory.addEntity(type, properties, tags)
+  );
+
+  mcp.registerTool(
+    "get_entity",
+    {
+      title: "Get Entity",
+      description: "Get an entity by ID from the knowledge graph",
+      inputSchema: {
+        entityId: z.string().describe("Entity ID to retrieve"),
+      },
+    },
+    ({ entityId }: { entityId: string }) => memory.getEntity(entityId)
+  );
+
+  mcp.registerTool(
+    "add_relationship",
+    {
+      title: "Add Relationship",
+      description: "Add a relationship between two entities in the knowledge graph",
+      inputSchema: {
+        sourceId: z.string().describe("Source entity ID"),
+        targetId: z.string().describe("Target entity ID"),
+        relationshipType: z.string().describe("Relationship type (e.g., 'depends_on', 'implements', 'manages')"),
+        properties: z.record(z.any()).optional().describe("Relationship properties"),
+        weight: z.number().optional().describe("Relationship weight/strength"),
+      },
+    },
+    ({ sourceId, targetId, relationshipType, properties, weight }: {
+      sourceId: string;
+      targetId: string;
+      relationshipType: string;
+      properties?: Record<string, any>;
+      weight?: number;
+    }) => memory.addRelationship(sourceId, targetId, relationshipType, properties, weight)
+  );
+
+  mcp.registerTool(
+    "query_entities",
+    {
+      title: "Query Entities",
+      description: "Query entities in the knowledge graph by search term, type, or tags",
+      inputSchema: {
+        query: z.string().optional().describe("Search query"),
+        type: z.string().optional().describe("Entity type to filter by"),
+        tags: z.array(z.string()).optional().describe("Tags to filter by"),
+      },
+    },
+    ({ query, type, tags }: { query?: string; type?: string; tags?: string[] }) =>
+      memory.queryEntities(query, type, tags)
+  );
+
+  mcp.registerTool(
+    "query_relationships",
+    {
+      title: "Query Relationships",
+      description: "Query relationships for an entity in the knowledge graph",
+      inputSchema: {
+        entityId: z.string().describe("Entity ID to query relationships for"),
+        relationshipType: z.string().optional().describe("Relationship type to filter by"),
+      },
+    },
+    ({ entityId, relationshipType }: { entityId: string; relationshipType?: string }) =>
+      memory.queryRelationships(entityId, relationshipType)
+  );
+
+  mcp.registerTool(
+    "traverse_graph",
+    {
+      title: "Traverse Knowledge Graph",
+      description: "Find paths between two entities in the knowledge graph",
+      inputSchema: {
+        sourceId: z.string().describe("Source entity ID"),
+        targetId: z.string().describe("Target entity ID"),
+        maxDepth: z.number().optional().default(5).describe("Maximum traversal depth"),
+      },
+    },
+    ({ sourceId, targetId, maxDepth }: { sourceId: string; targetId: string; maxDepth?: number }) =>
+      memory.traverseGraph(sourceId, targetId, maxDepth)
+  );
+
+  mcp.registerTool(
+    "get_graph_stats",
+    {
+      title: "Get Knowledge Graph Statistics",
+      description: "Get statistics about the knowledge graph",
+      inputSchema: {},
+    },
+    () => memory.getGraphStats()
+  );
+
+  mcp.registerTool(
+    "export_graph",
+    {
+      title: "Export Knowledge Graph",
+      description: "Export the knowledge graph in a visualization-ready format",
+      inputSchema: {},
+    },
+    () => memory.exportGraph()
+  );
+
+  mcp.registerTool(
+    "link_memory_to_entity",
+    {
+      title: "Link Memory to Entity",
+      description: "Link a memory entry to a knowledge graph entity",
+      inputSchema: {
+        key: z.string().describe("Memory key to link"),
+        entityId: z.string().describe("Entity ID to link to"),
+      },
+    },
+    ({ key, entityId }: { key: string; entityId: string }) =>
+      memory.linkMemoryToEntity(key, entityId)
+  );
+
+  mcp.registerTool(
+    "get_memory_by_entity",
+    {
+      title: "Get Memory by Entity",
+      description: "Get all memory entries linked to a specific entity",
+      inputSchema: {
+        entityId: z.string().describe("Entity ID to get memory for"),
+      },
+    },
+    ({ entityId }: { entityId: string }) => memory.getMemoryByEntity(entityId)
+  );
+
   // Jenkins Tools
   mcp.registerTool(
     jenkinsTools.validateJenkinsfile.name,
