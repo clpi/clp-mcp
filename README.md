@@ -1,179 +1,145 @@
-# CLP MCP - DevOps Infrastructure Server
+# CLP MCP - Comprehensive DevOps Context Server
 
-A comprehensive Model Context Protocol (MCP) server designed for DevOps and infrastructure management. This server provides extensive tooling for Jenkins, Ansible, Terraform, Kubernetes, and Docker, along with a sophisticated memory system for context retention and reasoning tracking.
+A Model Context Protocol (MCP) server providing extensive DevOps tools, resources, and context memory for infrastructure management, CI/CD, and cloud operations.
 
 ## Features
 
-### 🧠 Memory System
-- **Store & Recall**: Persistent key-value storage with metadata
-- **Search**: Full-text search across stored data with category filtering
-- **Reasoning Tracking**: Record and retrieve decision-making context
-- **Context Management**: Maintain state across interactions
-
 ### 🔧 DevOps Tools
+- **Ansible**: Playbook analysis, role generation, inventory management, and Vault operations
+- **Jenkins**: Pipeline analysis and generation, plugin lookup, credential management
+- **Kubernetes**: Manifest analysis, resource generation, security scanning, Helm chart support
+- **Cloud Services**: Infrastructure analysis, cost optimization, migration planning (AWS, Azure, GCP)
+- **Repository Context**: History tracking, file changes, dependency analysis, knowledge graphs
 
-#### Jenkins
-- Validate Jenkinsfiles for syntax and security issues
-- Generate pipeline templates for multiple project types
-- Analyze pipelines for optimization opportunities
+### 📚 Knowledge Resources
+- Ansible best practices, modules, and playbook patterns
+- Jenkins pipeline patterns, shared libraries, and essential plugins
+- Kubernetes security, manifest patterns, and Helm best practices
+- Cloud provider best practices (AWS Well-Architected, Azure, GCP)
+- Terraform/IaC patterns and best practices
 
-#### Ansible
-- Validate playbooks for best practices
-- Generate playbook templates (webserver, database, K8s, etc.)
-- Lint playbooks for anti-patterns
-- Generate inventory files (INI/YAML)
+### 💡 Intelligent Prompts
+- Infrastructure provisioning plans
+- CI/CD pipeline generation
+- Kubernetes deployment configurations
+- Ansible playbook generation
+- Cloud migration strategies
+- Disaster recovery plans
+- Security audit checklists
 
-#### Terraform
-- Validate configurations and detect security issues
-- Generate module templates (VPC, EC2, RDS, S3, etc.)
-- Format code to canonical style
-- Analyze state files
-- Generate backend configurations
+## Quick Start
 
-#### Kubernetes
-- Validate manifests against best practices
-- Generate resource templates (Deployments, Services, etc.)
-- Create Helm charts
-- Analyze resources for optimization
-- Generate Kustomization files
-
-#### Docker
-- Validate Dockerfiles for security and optimization
-- Generate multi-stage Dockerfile templates
-- Create docker-compose.yml files
-- Optimize existing Dockerfiles
-- Analyze image structures
-
-### 📚 Resources
-- DevOps best practices documentation
-- Jenkins pipeline examples
-- Terraform module patterns
-
-### 💡 Prompts
-- Infrastructure audit checklists
-- Deployment strategy recommendations
-
-## Installation
+### Installation
 
 ```bash
-bun install
+npm install
 ```
 
-## Development
-
-Run the development server with hot reload:
+### Development
 
 ```bash
-bun run dev
+npm run dev
 ```
 
-## Build
-
-Build for production:
+### Build
 
 ```bash
-bun run build
-```
-
-## Usage
-
-This MCP server can be used with any MCP-compatible client (Claude Desktop, etc.). See [DEVOPS_TOOLS.md](./DEVOPS_TOOLS.md) for comprehensive documentation of all tools and usage examples.
-
-### Quick Examples
-
-**Store Infrastructure Info:**
-```json
-{
-  "tool": "memory_store",
-  "arguments": {
-    "key": "prod_vpc_id",
-    "value": "vpc-12345",
-    "tags": ["production", "networking"],
-    "category": "terraform"
-  }
-}
-```
-
-**Generate Jenkins Pipeline:**
-```json
-{
-  "tool": "generate_jenkinsfile",
-  "arguments": {
-    "projectType": "nodejs",
-    "stages": ["build", "test", "deploy"],
-    "agent": "docker"
-  }
-}
-```
-
-**Validate Kubernetes Manifest:**
-```json
-{
-  "tool": "validate_k8s_manifest",
-  "arguments": {
-    "content": "apiVersion: apps/v1\nkind: Deployment\n..."
-  }
-}
+npm run build
 ```
 
 ## Documentation
 
-- **[DEVOPS_TOOLS.md](./DEVOPS_TOOLS.md)**: Complete tool reference and usage examples
-- **[AGENTS.md](./AGENTS.md)**: Development and deployment guide
+See [DEVOPS.md](./DEVOPS.md) for comprehensive documentation of all tools, resources, and prompts.
+
+## Usage Examples
+
+### Infrastructure Analysis
+```typescript
+// Analyze Terraform configuration
+{
+  "tool": "cloud_analyze_infrastructure",
+  "arguments": {
+    "configPath": "./terraform/main.tf",
+    "provider": "aws",
+    "configType": "terraform",
+    "checkCosts": true
+  }
+}
+```
+
+### Kubernetes Security Scan
+```typescript
+// Scan Kubernetes manifests
+{
+  "tool": "k8s_security_scan",
+  "arguments": {
+    "resourcePath": "./k8s/",
+    "scanType": "all",
+    "severity": "high"
+  }
+}
+```
+
+### Repository Knowledge Graph
+```typescript
+// Build knowledge graph of repository
+{
+  "tool": "repo_knowledge_graph",
+  "arguments": {
+    "repoPath": "/path/to/repo",
+    "depth": "deep",
+    "includeExternal": true
+  }
+}
+```
 
 ## Architecture
 
-Built on:
-- **@modelcontextprotocol/sdk**: Official MCP TypeScript SDK
+This MCP server is built with:
+- **@modelcontextprotocol/sdk**: MCP TypeScript SDK
 - **@smithery/sdk**: Smithery platform integration
-- **Zod**: Schema validation
-- **Bun**: Fast JavaScript runtime
+- **zod**: Schema validation
 
-## Memory System Architecture
+The server provides:
+- 31+ DevOps tools for infrastructure and CI/CD management
+- 15+ knowledge resources with best practices
+- 7 intelligent prompts for common scenarios
+- Repository context memory and tracking
 
-The memory system provides:
-1. **Key-Value Storage**: Store any JSON-serializable data with metadata
-2. **Tagging**: Organize data with multiple tags
-3. **Categories**: Group data by infrastructure type
-4. **Search**: Full-text search across keys, values, and tags
-5. **Reasoning History**: Track decision-making context and rationale
-6. **Context Management**: Session-specific context storage
+## Use Cases
 
-## Tool Categories
+### 1. DevOps Automation
+- Analyze and optimize infrastructure configurations
+- Generate CI/CD pipelines
+- Validate Kubernetes deployments
+- Audit security configurations
 
-### Memory (6 tools)
-- memory_store, memory_recall, memory_delete
-- memory_search, add_reasoning, get_reasoning_history
+### 2. Cloud Operations
+- Plan cloud migrations
+- Optimize costs
+- Design disaster recovery strategies
+- Implement multi-cloud best practices
 
-### Jenkins (3 tools)
-- validate_jenkinsfile, generate_jenkinsfile, analyze_jenkins_pipeline
+### 3. Knowledge Management
+- Track repository changes and history
+- Build knowledge graphs
+- Store decisions and context
+- Map infrastructure dependencies
 
-### Ansible (4 tools)
-- validate_ansible_playbook, generate_ansible_playbook
-- lint_ansible_playbook, generate_ansible_inventory
-
-### Terraform (5 tools)
-- validate_terraform, generate_terraform_module, format_terraform
-- analyze_terraform_state, generate_terraform_backend
-
-### Kubernetes (5 tools)
-- validate_k8s_manifest, generate_k8s_manifest, generate_helm_chart
-- analyze_k8s_resources, generate_kustomization
-
-### Docker (5 tools)
-- validate_dockerfile, generate_dockerfile, generate_docker_compose
-- optimize_dockerfile, analyze_docker_image
-
-**Total: 28 tools** for comprehensive DevOps infrastructure management
+### 4. Security & Compliance
+- Security scanning and auditing
+- Compliance framework alignment
+- Best practices validation
+- Vulnerability tracking
 
 ## Contributing
 
-Contributions are welcome! Please ensure all tools follow the established patterns and include comprehensive error handling.
+Contributions are welcome! Please see [DEVOPS.md](./DEVOPS.md) for information on adding new tools, resources, or prompts.
 
 ## License
 
 ISC
 
-## Project Info
+## Support
 
-This project uses [Bun](https://bun.com), a fast all-in-one JavaScript runtime.
+For issues or questions, please open an issue on GitHub.
