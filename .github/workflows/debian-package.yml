@@ -1,0 +1,131 @@
+name: Build Debian Package
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-deb:
+    name: Build Debian Package
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_ENV
+          else
+            VERSION="${GITHUB_REF##refs/*/}"
+            VERSION="${VERSION#v}"
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
+          fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Create x64 binary
+        run: |
+          bun build src/index.ts --compile --target=bun-linux-x64 --outfile clp-mcp
+
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg-dev debhelper
+
+      - name: Create Debian package structure
+        run: |
+          mkdir -p debian-package/DEBIAN
+          mkdir -p debian-package/usr/bin
+          mkdir -p debian-package/usr/share/doc/clp-mcp
+          mkdir -p debian-package/usr/share/man/man1
+
+      - name: Copy binary
+        run: |
+          cp clp-mcp debian-package/usr/bin/
+          chmod +x debian-package/usr/bin/clp-mcp
+
+      - name: Create control file
+        run: |
+          cat > debian-package/DEBIAN/control << EOF
+          Package: clp-mcp
+          Version: ${{ env.VERSION }}
+          Section: utils
+          Priority: optional
+          Architecture: amd64
+          Maintainer: ${{ github.repository_owner }} <noreply@github.com>
+          Description: DevOps-focused MCP server with infrastructure tooling
+           DevOps-focused MCP server with memory and comprehensive infrastructure
+           tooling for Jenkins, Ansible, Terraform, Kubernetes, and Docker.
+          Homepage: https://github.com/${{ github.repository }}
+          EOF
+
+      - name: Create copyright file
+        run: |
+          cat > debian-package/usr/share/doc/clp-mcp/copyright << EOF
+          Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+          Upstream-Name: clp-mcp
+          Source: https://github.com/${{ github.repository }}
+
+          Files: *
+          Copyright: $(date +%Y) ${{ github.repository_owner }}
+          License: ISC
+          EOF
+
+      - name: Create changelog
+        run: |
+          cat > debian-package/usr/share/doc/clp-mcp/changelog << EOF
+          clp-mcp (${{ env.VERSION }}) stable; urgency=low
+
+            * Release version ${{ env.VERSION }}
+
+           -- ${{ github.repository_owner }} <noreply@github.com>  $(date -R)
+          EOF
+          gzip -9 debian-package/usr/share/doc/clp-mcp/changelog
+
+      - name: Build Debian package
+        run: |
+          dpkg-deb --build debian-package clp-mcp_${{ env.VERSION }}_amd64.deb
+
+      - name: Create checksum
+        run: |
+          sha256sum clp-mcp_${{ env.VERSION }}_amd64.deb > clp-mcp_${{ env.VERSION }}_amd64.deb.sha256
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            clp-mcp_${{ env.VERSION }}_amd64.deb
+            clp-mcp_${{ env.VERSION }}_amd64.deb.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: debian-package
+          path: clp-mcp_${{ env.VERSION }}_amd64.deb

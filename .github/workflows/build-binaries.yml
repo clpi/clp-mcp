@@ -1,0 +1,155 @@
+name: Build Binaries
+
+on:
+  push:
+    branches: [main, master]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build for ${{ matrix.os }} - ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          # Linux builds
+          - os: linux
+            arch: x64
+            runner: ubuntu-latest
+            target: linux-x64
+          - os: linux
+            arch: arm64
+            runner: ubuntu-latest
+            target: linux-arm64
+          # macOS builds
+          - os: macos
+            arch: x64
+            runner: macos-latest
+            target: darwin-x64
+          - os: macos
+            arch: arm64
+            runner: macos-latest
+            target: darwin-arm64
+          # Windows builds
+          - os: windows
+            arch: x64
+            runner: windows-latest
+            target: win32-x64
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb', '**/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Create standalone binary (Bun)
+        if: matrix.os != 'windows'
+        run: |
+          bun build src/index.ts --compile --target=bun-${{ matrix.target }} --outfile clp-mcp-${{ matrix.target }}
+
+      - name: Create standalone binary (Bun) - Windows
+        if: matrix.os == 'windows'
+        run: |
+          bun build src/index.ts --compile --target=bun-${{ matrix.target }} --outfile clp-mcp-${{ matrix.target }}.exe
+
+      - name: Package binary (Unix)
+        if: matrix.os != 'windows'
+        run: |
+          mkdir -p dist
+          cp clp-mcp-${{ matrix.target }} dist/
+          chmod +x dist/clp-mcp-${{ matrix.target }}
+          cd dist
+          tar -czf clp-mcp-${{ matrix.target }}.tar.gz clp-mcp-${{ matrix.target }}
+          
+      - name: Package binary (Windows)
+        if: matrix.os == 'windows'
+        run: |
+          mkdir dist
+          cp clp-mcp-${{ matrix.target }}.exe dist/
+          cd dist
+          Compress-Archive -Path clp-mcp-${{ matrix.target }}.exe -DestinationPath clp-mcp-${{ matrix.target }}.zip
+
+      - name: Upload binary artifact (Unix)
+        if: matrix.os != 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: clp-mcp-${{ matrix.target }}
+          path: dist/clp-mcp-${{ matrix.target }}.tar.gz
+          retention-days: 90
+
+      - name: Upload binary artifact (Windows)
+        if: matrix.os == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: clp-mcp-${{ matrix.target }}
+          path: dist/clp-mcp-${{ matrix.target }}.zip
+          retention-days: 90
+
+  build-npm-package:
+    name: Build NPM Package
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: npm run build
+
+      - name: Package for NPM
+        run: |
+          mkdir -p npm-package
+          cp -r .smithery npm-package/
+          cp package.json npm-package/
+          cp README.md npm-package/
+          cd npm-package
+          tar -czf ../clp-mcp-npm.tar.gz .
+
+      - name: Upload NPM package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clp-mcp-npm-package
+          path: clp-mcp-npm.tar.gz
+          retention-days: 90

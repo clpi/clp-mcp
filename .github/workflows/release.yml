@@ -1,19 +1,53 @@
 name: Release
 
 on:
+  push:
+    tags:
+      - 'v*'
   release:
     types:
       - published
 
+permissions:
+  contents: write
+
 jobs:
-  release:
-    name: Release
-    runs-on: ubuntu-latest
+  build-and-release:
+    name: Build and Release for ${{ matrix.os }} - ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          # Linux builds
+          - os: linux
+            arch: x64
+            runner: ubuntu-latest
+            target: linux-x64
+          - os: linux
+            arch: arm64
+            runner: ubuntu-latest
+            target: linux-arm64
+          # macOS builds
+          - os: macos
+            arch: x64
+            runner: macos-latest
+            target: darwin-x64
+          - os: macos
+            arch: arm64
+            runner: macos-latest
+            target: darwin-arm64
+          # Windows builds
+          - os: windows
+            arch: x64
+            runner: windows-latest
+            target: win32-x64
+
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set env
+        shell: bash
         run: |
           VERSION="${GITHUB_REF##refs/*/}"
           # Remove 'v' prefix if it exists
@@ -31,28 +65,108 @@ jobs:
           bun-version: latest
 
       - name: Set package version
+        shell: bash
         run: |
           echo $(jq --arg v "${{ env.VERSION }}" '(.version) = $v' package.json) > package.json
 
-      - name: Update version in source file
-        run: |
-          sed -i "s/version: \"[0-9]*\.[0-9]*\.[0-9]*\"/version: \"${{ env.VERSION }}\"/" src/index.ts
-
       - name: Install Dependencies
-        run: bun install
+        run: npm install
 
       - name: Build
-        run: bun run build
+        run: npm run build
 
-      - name: Set NPM_TOKEN
-        run: npm config set //registry.npmjs.org/:_authToken=${{secrets.NPM_TOKEN}}
+      - name: Create standalone binary (Bun) - Unix
+        if: matrix.os != 'windows'
+        run: |
+          bun build src/index.ts --compile --target=bun-${{ matrix.target }} --outfile clp-mcp-${{ matrix.target }}
 
-      - name: Publish
+      - name: Create standalone binary (Bun) - Windows
+        if: matrix.os == 'windows'
+        run: |
+          bun build src/index.ts --compile --target=bun-${{ matrix.target }} --outfile clp-mcp-${{ matrix.target }}.exe
+
+      - name: Package binary (Unix)
+        if: matrix.os != 'windows'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp clp-mcp-${{ matrix.target }} dist/
+          chmod +x dist/clp-mcp-${{ matrix.target }}
+          cd dist
+          tar -czf clp-mcp-${{ env.VERSION }}-${{ matrix.target }}.tar.gz clp-mcp-${{ matrix.target }}
+          sha256sum clp-mcp-${{ env.VERSION }}-${{ matrix.target }}.tar.gz > clp-mcp-${{ env.VERSION }}-${{ matrix.target }}.tar.gz.sha256
+          
+      - name: Package binary (Windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          mkdir dist
+          cp clp-mcp-${{ matrix.target }}.exe dist/
+          cd dist
+          Compress-Archive -Path clp-mcp-${{ matrix.target }}.exe -DestinationPath clp-mcp-${{ env.VERSION }}-${{ matrix.target }}.zip
+          Get-FileHash -Path clp-mcp-${{ env.VERSION }}-${{ matrix.target }}.zip -Algorithm SHA256 | Select-Object -ExpandProperty Hash | Out-File -FilePath clp-mcp-${{ env.VERSION }}-${{ matrix.target }}.zip.sha256
+
+      - name: Upload Release Assets (Unix)
+        if: matrix.os != 'windows'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/clp-mcp-${{ env.VERSION }}-${{ matrix.target }}.tar.gz
+            dist/clp-mcp-${{ env.VERSION }}-${{ matrix.target }}.tar.gz.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Release Assets (Windows)
+        if: matrix.os == 'windows'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/clp-mcp-${{ env.VERSION }}-${{ matrix.target }}.zip
+            dist/clp-mcp-${{ env.VERSION }}-${{ matrix.target }}.zip.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-npm:
+    name: Publish to NPM
+    runs-on: ubuntu-latest
+    needs: build-and-release
+    
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Set env
+        run: |
+          VERSION="${GITHUB_REF##refs/*/}"
+          # Remove 'v' prefix if it exists
+          VERSION="${VERSION#v}"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Set package version
+        run: |
+          echo $(jq --arg v "${{ env.VERSION }}" '(.version) = $v' package.json) > package.json
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build
+
+      - name: Publish to NPM
+        if: secrets.NPM_TOKEN != ''
         run: |
           npm pkg delete scripts.prepare
           npm publish --access public
-
-      - name: Publish release candidate
-        run: |
-          npm pkg delete scripts.prepare
-          npm publish --access public --tag=canary
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
