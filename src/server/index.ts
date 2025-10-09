@@ -130,6 +130,11 @@ export default function serve({ config, }: { config: z.infer<typeof configSchema
             text: `Memory stored successfully!\n\nID: ${storedMemory.id}\nContent: ${storedMemory.content}\nContext: ${storedMemory.context || "None"}\nTags: ${storedMemory.tags.join(", ") || "None"}\nImportance: ${storedMemory.importance}\nTimestamp: ${new Date(storedMemory.timestamp).toISOString()}`,
           },
         ],
+      };
+    }
+  );
+
+  mcp.registerTool(
     "add_reasoning",
     {
       title: "Add Reasoning",
@@ -529,7 +534,7 @@ export default function serve({ config, }: { config: z.infer<typeof configSchema
     }
   );
 
-  // Add a resource
+  mcp.registerTool(
     "get_reasoning_history",
     {
       title: "Get Reasoning History",
