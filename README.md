@@ -4,6 +4,13 @@ A Model Context Protocol (MCP) server providing extensive DevOps tools, resource
 
 ## Features
 
+### 🧠 Knowledge Graph & Context Awareness
+- **Entity Management**: Model services, infrastructure, people, and concepts as entities
+- **Relationship Mapping**: Define and query dependencies, ownership, and connections
+- **Graph Traversal**: Find paths, analyze impact, discover dependency chains
+- **Memory Integration**: Link contextual information to entities for rich context
+- **Visualization Export**: Generate graph data for D3.js, Cytoscape, and other tools
+
 ### 🔧 DevOps Tools
 - **Ansible**: Playbook analysis, role generation, inventory management, and Vault operations
 - **Jenkins**: Pipeline analysis and generation, plugin lookup, credential management
@@ -49,7 +56,10 @@ npm run build
 
 ## Documentation
 
-See [DEVOPS.md](./DEVOPS.md) for comprehensive documentation of all tools, resources, and prompts.
+- [DEVOPS.md](./DEVOPS.md) - Comprehensive documentation of all DevOps tools, resources, and prompts
+- [DEVOPS_TOOLS.md](./DEVOPS_TOOLS.md) - Detailed tool reference and usage examples
+- [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md) - Complete guide to the knowledge graph system
+- [QUICK_START.md](./QUICK_START.md) - Quick start guide
 
 ## Usage Examples
 
@@ -76,6 +86,44 @@ See [DEVOPS.md](./DEVOPS.md) for comprehensive documentation of all tools, resou
     "resourcePath": "./k8s/",
     "scanType": "all",
     "severity": "high"
+  }
+}
+```
+
+### Knowledge Graph - Model Infrastructure
+```typescript
+// Create entities for your infrastructure
+{
+  "tool": "add_entity",
+  "arguments": {
+    "type": "service",
+    "properties": {
+      "name": "api-gateway",
+      "version": "2.0.0",
+      "port": 8080
+    },
+    "tags": ["microservice", "critical"]
+  }
+}
+
+// Define relationships between components
+{
+  "tool": "add_relationship",
+  "arguments": {
+    "sourceId": "api-gateway-id",
+    "targetId": "auth-service-id",
+    "relationshipType": "depends_on",
+    "weight": 0.9
+  }
+}
+
+// Traverse the graph for impact analysis
+{
+  "tool": "traverse_graph",
+  "arguments": {
+    "sourceId": "frontend-id",
+    "targetId": "database-id",
+    "maxDepth": 5
   }
 }
 ```
