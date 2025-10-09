@@ -91,10 +91,10 @@ export async function handleRepoFileTracking(args: z.infer<typeof repoFileTracki
 
 export async function handleRepoContextMemory(args: z.infer<typeof repoContextMemoryTool.inputSchema>) {
   const operations = {
-    store: `Storing context in repository memory\n\nContext: ${args.context || "Not provided"}\nCategory: ${args.category || "general"}\n\nContext stored with:\n- Timestamp\n- Category tag\n- Searchable metadata\n- Version tracking\n\nContext can be retrieved using search or list operations.`,
-    retrieve: `Retrieving stored context\n\nCategory: ${args.category || "all categories"}\n\nRetrieved Context:\n- All stored decisions and knowledge\n- Organized by category and timestamp\n- Includes related context\n- Historical context preserved`,
-    search: `Searching repository context\n\nQuery: ${args.query || "Not specified"}\n\nSearch Results:\n- Matching context entries\n- Relevance scored\n- Related entries suggested\n- Historical information included`,
-    list: `Listing all stored context\n\nCategory Filter: ${args.category || "all"}\n\nAvailable Context:\n1. Architecture decisions\n2. DevOps configurations\n3. Infrastructure changes\n4. General repository knowledge\n\nEach entry includes:\n- Timestamp\n- Category\n- Summary\n- Full details available`,
+    store: `Storing context in repository memory\n\nContext: ${args.context || "Not provided"}\nCategory: ${args.category || "general"}\n\nContext stored with:\n- Timestamp\n- Category tag\n- Searchable metadata\n- Version tracking\n\nContext can be retrieved using search or list operations.\n\nIntegration with Knowledge Graph:\n- Consider creating entities for important concepts\n- Link memory entries to entities using link_memory_to_entity\n- Build relationships between related context items`,
+    retrieve: `Retrieving stored context\n\nCategory: ${args.category || "all categories"}\n\nRetrieved Context:\n- All stored decisions and knowledge\n- Organized by category and timestamp\n- Includes related context\n- Historical context preserved\n\nEnhanced Retrieval:\n- Use query_entities to find related concepts\n- Use get_memory_by_entity to get context for specific entities\n- Use traverse_graph to explore related information`,
+    search: `Searching repository context\n\nQuery: ${args.query || "Not specified"}\n\nSearch Results:\n- Matching context entries\n- Relevance scored\n- Related entries suggested\n- Historical information included\n\nKnowledge Graph Integration:\n- Search entities: query_entities with query "${args.query || ""}"\n- Find relationships: query_relationships for connected information\n- Semantic search: Entities provide typed, structured context`,
+    list: `Listing all stored context\n\nCategory Filter: ${args.category || "all"}\n\nAvailable Context:\n1. Architecture decisions\n2. DevOps configurations\n3. Infrastructure changes\n4. General repository knowledge\n\nEach entry includes:\n- Timestamp\n- Category\n- Summary\n- Full details available\n\nKnowledge Graph View:\n- Use get_graph_stats to see entity distribution\n- Use export_graph to visualize all relationships\n- Query by type using query_entities`,
   };
   
   return {
@@ -132,11 +132,64 @@ export async function handleRepoInfrastructureMap(args: z.infer<typeof repoInfra
 }
 
 export async function handleRepoKnowledgeGraph(args: z.infer<typeof repoKnowledgeGraphTool.inputSchema>) {
+  // This is a mock implementation that demonstrates the graph structure
+  // In a real implementation, this would analyze the repository and build the actual graph
+  
+  const graphData = {
+    repoPath: args.repoPath,
+    depth: args.depth,
+    includeExternal: args.includeExternal,
+    analysisResults: {
+      codeStructure: {
+        modules: "Analyzed",
+        classes: "Mapped",
+        functions: "Catalogued",
+        imports: "Traced"
+      },
+      infrastructureRelationships: {
+        services: "Identified",
+        configurations: "Linked",
+        deployments: "Mapped"
+      },
+      devopsConnections: {
+        cicdPipelines: "Connected to source code",
+        infrastructure: "Linked to deployments",
+        monitoring: "Connected to services"
+      },
+      externalDependencies: args.includeExternal ? {
+        thirdPartyLibraries: "Included",
+        externalServices: "Mapped",
+        apiIntegrations: "Documented"
+      } : null,
+      historicalContext: {
+        evolutionPatterns: "Analyzed",
+        decisionPoints: "Identified",
+        architecturalChanges: "Tracked"
+      }
+    },
+    graphInsights: {
+      criticalPathComponents: "Identified critical services and dependencies",
+      highlyCoupledAreas: "Found tightly coupled modules that may need refactoring",
+      isolatedSubsystems: "Identified independent subsystems with minimal dependencies",
+      integrationPoints: "Mapped all integration boundaries and communication patterns"
+    },
+    visualization: {
+      format: "nodes-and-edges",
+      description: "Graph ready for visualization with graph libraries (D3.js, Cytoscape, etc.)"
+    },
+    recommendations: [
+      "Use add_entity and add_relationship tools to build the actual knowledge graph",
+      "Link repository components using entity relationships",
+      "Use traverse_graph to analyze dependency chains",
+      "Export graph using export_graph for visualization"
+    ]
+  };
+  
   return {
     content: [
       {
         type: "text" as const,
-        text: `Knowledge Graph: ${args.repoPath}\n\nAnalysis Depth: ${args.depth}\nExternal Dependencies: ${args.includeExternal ? "Included" : "Excluded"}\n\nGraph Components:\n\n1. Code Structure\n   - Modules and packages\n   - Class and function relationships\n   - Import dependencies\n\n2. Infrastructure Relationships\n   - Service dependencies\n   - Configuration links\n   - Deployment relationships\n\n3. DevOps Connections\n   - CI/CD pipelines to code\n   - Infrastructure to deployments\n   - Monitoring to services\n\n4. External Dependencies\n   ${args.includeExternal ? "- Third-party libraries\n   - External services\n   - API integrations" : "- Not included in analysis"}\n\n5. Historical Context\n   - Evolution patterns\n   - Decision points\n   - Architectural changes\n\nGraph Insights:\n- Critical path components\n- Highly coupled areas\n- Isolated subsystems\n- Integration points\n\nVisualization:\n- Node relationships mapped\n- Dependency chains identified\n- Impact analysis available`,
+        text: `Repository Knowledge Graph Analysis\n\n${JSON.stringify(graphData, null, 2)}\n\nTo build a real, queryable knowledge graph:\n\n1. Use add_entity to create entities for:\n   - Services and components\n   - Configuration files\n   - Infrastructure resources\n   - External dependencies\n\n2. Use add_relationship to connect:\n   - Service dependencies\n   - Configuration relationships\n   - Infrastructure connections\n\n3. Query and analyze using:\n   - query_entities: Find specific components\n   - query_relationships: Explore connections\n   - traverse_graph: Find dependency paths\n   - get_graph_stats: View overall structure\n\n4. Export and visualize:\n   - export_graph: Get visualization-ready format\n   - Compatible with D3.js, Cytoscape, Graphviz`,
       },
     ],
   };

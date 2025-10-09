@@ -70,6 +70,123 @@ Retrieve recent reasoning history.
 **Parameters:**
 - `limit` (number, default: 10): Number of recent entries to retrieve
 
+### Knowledge Graph and Entity Tools
+
+The server now includes a powerful knowledge graph system for modeling entities and their relationships, enabling context-aware operations and semantic queries.
+
+#### `add_entity`
+Add an entity to the knowledge graph.
+
+**Parameters:**
+- `type` (string): Entity type (e.g., 'service', 'database', 'person', 'concept')
+- `properties` (object): Entity properties as key-value pairs
+- `tags` (array of strings, optional): Tags for categorization
+
+**Example:**
+```json
+{
+  "type": "service",
+  "properties": {
+    "name": "api-gateway",
+    "version": "1.2.0",
+    "environment": "production"
+  },
+  "tags": ["microservice", "critical"]
+}
+```
+
+#### `get_entity`
+Get an entity by ID from the knowledge graph.
+
+**Parameters:**
+- `entityId` (string): Entity ID to retrieve
+
+#### `add_relationship`
+Add a relationship between two entities in the knowledge graph.
+
+**Parameters:**
+- `sourceId` (string): Source entity ID
+- `targetId` (string): Target entity ID
+- `relationshipType` (string): Relationship type (e.g., 'depends_on', 'implements', 'manages')
+- `properties` (object, optional): Relationship properties
+- `weight` (number, optional): Relationship weight/strength
+
+**Example:**
+```json
+{
+  "sourceId": "entity-123",
+  "targetId": "entity-456",
+  "relationshipType": "depends_on",
+  "properties": {
+    "version": ">=2.0.0"
+  },
+  "weight": 0.9
+}
+```
+
+#### `query_entities`
+Query entities in the knowledge graph by search term, type, or tags.
+
+**Parameters:**
+- `query` (string, optional): Search query
+- `type` (string, optional): Entity type to filter by
+- `tags` (array of strings, optional): Tags to filter by
+
+#### `query_relationships`
+Query relationships for an entity in the knowledge graph.
+
+**Parameters:**
+- `entityId` (string): Entity ID to query relationships for
+- `relationshipType` (string, optional): Relationship type to filter by
+
+#### `traverse_graph`
+Find paths between two entities in the knowledge graph.
+
+**Parameters:**
+- `sourceId` (string): Source entity ID
+- `targetId` (string): Target entity ID
+- `maxDepth` (number, optional, default: 5): Maximum traversal depth
+
+**Use Cases:**
+- Find dependency chains between services
+- Identify impact of changes
+- Discover relationships between components
+
+#### `get_graph_stats`
+Get statistics about the knowledge graph.
+
+**Returns:**
+- Total entity count
+- Total relationship count
+- Entity type distribution
+
+#### `export_graph`
+Export the knowledge graph in a visualization-ready format.
+
+**Returns:**
+- Nodes array with entity information
+- Edges array with relationship information
+- Compatible with graph visualization libraries
+
+#### `link_memory_to_entity`
+Link a memory entry to a knowledge graph entity.
+
+**Parameters:**
+- `key` (string): Memory key to link
+- `entityId` (string): Entity ID to link to
+
+**Use Case:**
+Store contextual information about entities while maintaining the semantic graph structure.
+
+#### `get_memory_by_entity`
+Get all memory entries linked to a specific entity.
+
+**Parameters:**
+- `entityId` (string): Entity ID to get memory for
+
+**Returns:**
+All memory entries that have been linked to the specified entity.
+
 ## Jenkins Tools
 
 ### `validate_jenkinsfile`
@@ -511,7 +628,92 @@ generate_docker_compose({
 });
 ```
 
-### Example 5: Track Reasoning
+### Example 5: Building a Knowledge Graph of Infrastructure
+
+```javascript
+// Create entities for services
+const apiGateway = add_entity({
+  type: "service",
+  properties: {
+    name: "api-gateway",
+    version: "2.1.0",
+    port: 8080,
+    environment: "production"
+  },
+  tags: ["microservice", "critical"]
+});
+
+const userService = add_entity({
+  type: "service",
+  properties: {
+    name: "user-service",
+    version: "1.5.0",
+    port: 8081
+  },
+  tags: ["microservice"]
+});
+
+const database = add_entity({
+  type: "database",
+  properties: {
+    name: "users-db",
+    engine: "postgresql",
+    version: "14.5"
+  },
+  tags: ["storage", "critical"]
+});
+
+// Create relationships
+add_relationship({
+  sourceId: apiGateway.id,
+  targetId: userService.id,
+  relationshipType: "routes_to",
+  properties: { path: "/api/users" },
+  weight: 0.9
+});
+
+add_relationship({
+  sourceId: userService.id,
+  targetId: database.id,
+  relationshipType: "depends_on",
+  properties: { connection: "read-write" },
+  weight: 1.0
+});
+
+// Query the graph
+query_relationships({
+  entityId: userService.id
+});
+
+// Find paths (e.g., for impact analysis)
+traverse_graph({
+  sourceId: apiGateway.id,
+  targetId: database.id,
+  maxDepth: 5
+});
+
+// Link memory to entities for context
+memory_store({
+  key: "db_migration_notes",
+  value: "Migration to v14.5 completed on 2024-01-15",
+  category: "infrastructure"
+});
+
+link_memory_to_entity({
+  key: "db_migration_notes",
+  entityId: database.id
+});
+
+// Retrieve all context for an entity
+get_memory_by_entity({
+  entityId: database.id
+});
+
+// Export graph for visualization
+export_graph();
+```
+
+### Example 6: Track Reasoning
 
 ```javascript
 // Record decision-making process

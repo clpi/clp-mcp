@@ -1,8 +1,55 @@
-# CLP MCP - Comprehensive DevOps Context Server
+# CLP MCP Server
+
+A Model Context Protocol (MCP) server with a dynamic long-term memory system.
+
+## Features
+
+### 🧠 Dynamic Long-Term Memory System
+
+The CLP MCP server includes a comprehensive memory system that provides:
+
+- **Intelligent Storage**: Store information with rich metadata (context, tags, importance)
+- **Smart Retrieval**: Advanced search and recall with relevance ranking
+- **Temporal Awareness**: Track when information was created and accessed
+- **Relationship Mapping**: Automatically identify related memories
+- **Pattern Detection**: Identify recurring patterns across stored information
+- **Access Analytics**: Track usage patterns and access frequency
+
+See [MEMORY_SYSTEM.md](./MEMORY_SYSTEM.md) for detailed documentation.
+
+### Available MCP Tools
+
+- `memory_store` - Store new memories with metadata
+- `memory_recall` - Recall memories with advanced filtering
+- `memory_search` - Full-text search across memories
+- `memory_get_recent` - Get recently stored memories
+- `memory_get_important` - Get high-importance memories
+- `memory_stats` - Get memory system statistics
+- `memory_consolidate` - Identify patterns and generate summaries
+
+### Available MCP Resources
+
+- `memory://all` - Access all stored memories
+- `memory://stats` - Memory system statistics
+- `memory://recent` - Recent memories
+- `memory://important` - Important memories
+
+## Installation
+
+[![Build Check](https://github.com/clpi/clp-mcp/actions/workflows/check.yml/badge.svg)](https://github.com/clpi/clp-mcp/actions/workflows/check.yml)
+[![CodeQL](https://github.com/clpi/clp-mcp/actions/workflows/codeql.yml/badge.svg)](https://github.com/clpi/clp-mcp/actions/workflows/codeql.yml)
+[![Docker Image](https://github.com/clpi/clp-mcp/actions/workflows/docker-image.yml/badge.svg)](https://github.com/clpi/clp-mcp/actions/workflows/docker-image.yml)
 
 A Model Context Protocol (MCP) server providing extensive DevOps tools, resources, and context memory for infrastructure management, CI/CD, and cloud operations.
 
 ## Features
+
+### 🧠 Knowledge Graph & Context Awareness
+- **Entity Management**: Model services, infrastructure, people, and concepts as entities
+- **Relationship Mapping**: Define and query dependencies, ownership, and connections
+- **Graph Traversal**: Find paths, analyze impact, discover dependency chains
+- **Memory Integration**: Link contextual information to entities for rich context
+- **Visualization Export**: Generate graph data for D3.js, Cytoscape, and other tools
 
 ### 🔧 DevOps Tools
 - **Ansible**: Playbook analysis, role generation, inventory management, and Vault operations
@@ -31,6 +78,7 @@ A Model Context Protocol (MCP) server providing extensive DevOps tools, resource
 
 ### NPM (for development)
 
+#### From NPM
 ```bash
 npm install
 npm run dev
@@ -40,6 +88,7 @@ npm run dev
 
 Download binaries for your platform from [GitHub Releases](https://github.com/clpi/clp-mcp/releases):
 
+**Linux**:
 ```bash
 # Linux
 curl -L -o clp-mcp https://github.com/clpi/clp-mcp/releases/latest/download/clp-mcp-linux-x64
@@ -86,7 +135,10 @@ See [DISTRIBUTION.md](./DISTRIBUTION.md) for detailed installation instructions 
 
 ## Documentation
 
-See [DEVOPS.md](./DEVOPS.md) for comprehensive documentation of all tools, resources, and prompts.
+- [DEVOPS.md](./DEVOPS.md) - Comprehensive documentation of all DevOps tools, resources, and prompts
+- [DEVOPS_TOOLS.md](./DEVOPS_TOOLS.md) - Detailed tool reference and usage examples
+- [KNOWLEDGE_GRAPH.md](./KNOWLEDGE_GRAPH.md) - Complete guide to the knowledge graph system
+- [QUICK_START.md](./QUICK_START.md) - Quick start guide
 
 ## Usage Examples
 
@@ -104,15 +156,42 @@ See [DEVOPS.md](./DEVOPS.md) for comprehensive documentation of all tools, resou
 }
 ```
 
-### Kubernetes Security Scan
+To build:
+
+### Knowledge Graph - Model Infrastructure
 ```typescript
-// Scan Kubernetes manifests
+// Create entities for your infrastructure
 {
-  "tool": "k8s_security_scan",
+  "tool": "add_entity",
   "arguments": {
-    "resourcePath": "./k8s/",
-    "scanType": "all",
-    "severity": "high"
+    "type": "service",
+    "properties": {
+      "name": "api-gateway",
+      "version": "2.0.0",
+      "port": 8080
+    },
+    "tags": ["microservice", "critical"]
+  }
+}
+
+// Define relationships between components
+{
+  "tool": "add_relationship",
+  "arguments": {
+    "sourceId": "api-gateway-id",
+    "targetId": "auth-service-id",
+    "relationshipType": "depends_on",
+    "weight": 0.9
+  }
+}
+
+// Traverse the graph for impact analysis
+{
+  "tool": "traverse_graph",
+  "arguments": {
+    "sourceId": "frontend-id",
+    "targetId": "database-id",
+    "maxDepth": 5
   }
 }
 ```
@@ -130,53 +209,17 @@ See [DEVOPS.md](./DEVOPS.md) for comprehensive documentation of all tools, resou
 }
 ```
 
-## Architecture
+## Testing
 
-This MCP server is built with:
-- **@modelcontextprotocol/sdk**: MCP TypeScript SDK
-- **@smithery/sdk**: Smithery platform integration
-- **zod**: Schema validation
+Test the memory system:
 
-The server provides:
-- 31+ DevOps tools for infrastructure and CI/CD management
-- 15+ knowledge resources with best practices
-- 7 intelligent prompts for common scenarios
-- Repository context memory and tracking
+```bash
+npx tsx test-memory.ts
+```
 
-## Use Cases
+## Documentation
 
-### 1. DevOps Automation
-- Analyze and optimize infrastructure configurations
-- Generate CI/CD pipelines
-- Validate Kubernetes deployments
-- Audit security configurations
+- [Memory System Documentation](./MEMORY_SYSTEM.md) - Comprehensive guide to the memory system
+- [Agent Guidelines](./AGENTS.md) - Development workflow and guidelines
 
-### 2. Cloud Operations
-- Plan cloud migrations
-- Optimize costs
-- Design disaster recovery strategies
-- Implement multi-cloud best practices
-
-### 3. Knowledge Management
-- Track repository changes and history
-- Build knowledge graphs
-- Store decisions and context
-- Map infrastructure dependencies
-
-### 4. Security & Compliance
-- Security scanning and auditing
-- Compliance framework alignment
-- Best practices validation
-- Vulnerability tracking
-
-## Contributing
-
-Contributions are welcome! Please see [DEVOPS.md](./DEVOPS.md) for information on adding new tools, resources, or prompts.
-
-## License
-
-ISC
-
-## Support
-
-For issues or questions, please open an issue on GitHub.
+This project was created using `bun init` in bun v1.2.23. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.

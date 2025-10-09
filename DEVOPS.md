@@ -256,6 +256,23 @@ Build knowledge graph of repository structure, relationships, and dependencies.
 - `depth` (enum, default: medium): Depth of knowledge graph analysis
 - `includeExternal` (boolean, default: false): Include external dependencies in graph
 
+**Returns:**
+Provides a structured analysis and recommendations for building a queryable knowledge graph using the entity and relationship tools.
+
+**Integration:**
+This tool works in conjunction with the knowledge graph system:
+- Creates entities for repository components (services, configs, infrastructure)
+- Establishes relationships (dependencies, configurations, deployments)
+- Enables semantic queries and impact analysis
+- Supports visualization through graph export
+
+**Workflow:**
+1. Run `repo_knowledge_graph` to analyze repository structure
+2. Use `add_entity` to create entities for discovered components
+3. Use `add_relationship` to model dependencies and connections
+4. Query using `query_entities`, `query_relationships`, `traverse_graph`
+5. Export using `export_graph` for visualization
+
 ## Resources
 
 The server provides extensive knowledge resources accessible via URI:
